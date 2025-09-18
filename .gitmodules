@@ -1,0 +1,9 @@
+[submodule "back_menu/third_party/cegui"]
+	path = back_menu/third_party/cegui
+	url = https://github.com/cegui/cegui.git
+[submodule "back_menu/third_party/ois"]
+	path = back_menu/third_party/ois
+	url = https://github.com/wgois/OIS.git
+[submodule "back_menu/third_party/ogre"]
+	path = back_menu/third_party/ogre
+	url = https://github.com/OGRECave/ogre.git
