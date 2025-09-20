@@ -1,36 +1,38 @@
-#pragma once                              
-#include "GameConfig.h"                    
-#include <third_party/cegui/cegui/include/CEGUI/CEGUI.h>                   
-#include <memory>                          
+#pragma once
+#include "MenuState.h"
+#include <vector>
 
-class MenuManager;                         
-                                          
-
-/*класс используется для наследования остальными и является основным для меню*/
-class MenuState
+// Состояние настройки игровой сессии - выбор параметров перед началом игры
+class GameSetupState final : public MenuState
 {
 public:
-    explicit MenuState(MenuManager& mgr)    
-        : m_manager(mgr)                    
-    {}
+    explicit GameSetupState(MenuManager& mgr);
 
-    virtual ~MenuState() = default;         
+    void enter() override;
+    void exit() override;
+    void update(float dt) override;
+    void handleEvent(const CEGUI::EventArgs& e) override;
 
-    virtual void enter() = 0;
+private:
+    std::vector<CEGUI::Event::Connection> m_handlers;
 
-    virtual void exit() = 0;
+    // Обработчики событий
+    bool onStartClicked(const CEGUI::EventArgs& e);
+    bool onBackClicked(const CEGUI::EventArgs& e);
+    bool onQuickMatchToggled(const CEGUI::EventArgs& e);
+    bool onBotsCountChanged(const CEGUI::EventArgs& e);
+    bool onRoundsCountChanged(const CEGUI::EventArgs& e);
 
-    /*для обновления кадров мигания курсоров*/
-    virtual void update(float dt) = 0;
+    // Элементы UI
+    CEGUI::Window* m_roundsLabel = nullptr;
+    CEGUI::Window* m_roundsEditbox = nullptr;
+    CEGUI::Window* m_quickMatchCheckbox = nullptr;
+    CEGUI::Window* m_botsLabel = nullptr;
+    CEGUI::Window* m_botsCombobox = nullptr;
+    CEGUI::Window* m_startButton = nullptr;
+    CEGUI::Window* m_backButton = nullptr;
 
-    /*обработка системных gui событий*/
-    virtual void handleEvent(const CEGUI::EventArgs& e) = 0;
-
-    GameConfig& config() noexcept;
-    const GameConfig& config() const noexcept;
-
-protected:
-    MenuManager& m_manager;
-
-    CEGUI::Window* m_root = nullptr;
+    bool validateInput();
+    
+    void updateUIState();
 };
