@@ -25,4 +25,14 @@ private:
     /*для подвески колбэка*/
     void subscribeButton(const CEGUI::String& name,
                          bool (MainMenuState::*handler)(const CEGUI::EventArgs&));
+
+    // Элементы UI
+    CEGUI::Window* m_startButton = nullptr;
+    CEGUI::Window* m_settingsButton = nullptr;
+    CEGUI::Window* m_creditsButton = nullptr;
+    CEGUI::Window* m_exitButton = nullptr;
+    
+    // Анимационные параметры
+    float m_pulseValue = 0.0f;
+    bool m_pulseIncreasing = true;
 };
