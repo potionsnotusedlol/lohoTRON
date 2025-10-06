@@ -1,14 +1,14 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <memory>
-#include <mutex>
 #include <algorithm>
 #include <fstream>
 #include <optional>
 #include <cassert>
 #include <functional>
+#include <shared_mutex>
 
 enum GameModeType {
     REGULAR,
@@ -58,20 +58,20 @@ struct EventData {
 
 class EventSystem {
 private:
-    std::map<std::string, std::vector<std::function<void(const EventData&)>>> event_handlers;
-    std::mutex lock_guard;
+    std::unordered_map<std::string, std::vector<std::function<void(const EventData&)>>> event_handlers;
+    std::shared_mutex lock_guard;
     
 public:
-    void addListener(const std::string& event_name, std::function<void(const EventData&)> handler_func) {
-        std::lock_guard<std::mutex> lock(lock_guard);
-        event_handlers[event_name].push_back(handler_func);
+    void addListener(std::string event_name, std::function<void(const EventData&)> handler_func) {
+        std::shared_lock lock(lock_guard);
+        event_handlers[std::move(event_name)].emplace_back(std::move(handler_func));
     }
     
     void sendEvent(const std::string& event_name, const EventData& event_info) {
-        std::lock_guard<std::mutex> lock(lock_guard);
+        std::shared_lock lock(lock_guard);
         auto found = event_handlers.find(event_name);
         if (found != event_handlers.end()) {
-            for (auto& handler : found->second) {
+            for (const auto& handler : found->second) {
                 handler(event_info);
             }
         }
@@ -80,31 +80,35 @@ public:
 
 class KeyboardManager {
 private:
-    std::map<std::string, std::map<char, std::string>> key_presets = {
+    std::unordered_map<std::string, std::unordered_map<char, std::string>> key_presets = {
         {"WASD_KEYS", {{'W', "MoveUp"}, {'A', "MoveLeft"}, {'S', "MoveDown"}, {'D', "MoveRight"}}},
         {"ARROW_KEYS", {{'U', "MoveUp"}, {'H', "MoveLeft"}, {'J', "MoveDown"}, {'K', "MoveRight"}}},
         {"NUM_PAD", {{'8', "MoveUp"}, {'4', "MoveLeft"}, {'2', "MoveDown"}, {'6', "MoveRight"}}}
     };
+    mutable std::vector<std::string> cached_preset_names;
+    mutable bool cache_valid = false;
 
 public:
-    std::vector<std::string> getPresetNames() {
-        std::vector<std::string> names_list;
-        for (const auto& item : key_presets) {
-            names_list.push_back(item.first);
+    const std::vector<std::string>& getPresetNames() {
+        if (!cache_valid) {
+            cached_preset_names.clear();
+            cached_preset_names.reserve(key_presets.size());
+            for (const auto& item : key_presets) {
+                cached_preset_names.emplace_back(item.first);
+            }
+            cache_valid = true;
         }
-        return names_list;
+        return cached_preset_names;
     }
     
-    bool checkPreset(const std::string& preset_name) {
+    bool checkPreset(const std::string& preset_name) const {
         return key_presets.find(preset_name) != key_presets.end();
     }
     
-    std::map<char, std::string> getKeyMap(const std::string& preset_name) {
+    const std::unordered_map<char, std::string>& getKeyMap(const std::string& preset_name) const {
+        static const std::unordered_map<char, std::string> empty_map;
         auto it = key_presets.find(preset_name);
-        if (it != key_presets.end()) {
-            return it->second;
-        }
-        return {};
+        return (it != key_presets.end()) ? it->second : empty_map;
     }
 };
 
@@ -157,7 +161,7 @@ class PlayerConfig {
 private:
     std::string user_name;
     std::string keyboard_preset;
-    std::map<char, std::string> custom_keybinds;
+    std::unordered_map<char, std::string> custom_keybinds;
     ColorPlayer user_color;
     int map_dimension;
     
@@ -191,8 +195,8 @@ public:
         return OperationResult();
     }
     
-    OperationResult changeCustomKeys(const std::map<char, std::string>& key_mapping) {
-        std::map<char, std::string> temp_check;
+    OperationResult changeCustomKeys(const std::unordered_map<char, std::string>& key_mapping) {
+        std::unordered_map<char, std::string> temp_check;
         for (const auto& key_pair : key_mapping) {
             if (temp_check.find(key_pair.first) != temp_check.end()) {
                 return OperationResult(DATA_CONFLICT, "Duplicate key assignments");
@@ -221,7 +225,7 @@ public:
     
     std::string getName() const { return user_name; }
     std::string getKeyboardPreset() const { return keyboard_preset; }
-    std::map<char, std::string> getCustomKeys() const { return custom_keybinds; }
+    std::unordered_map<char, std::string> getCustomKeys() const { return custom_keybinds; }
     ColorPlayer getColor() const { return user_color; }
     int getMapSize() const { return map_dimension; }
 };
@@ -235,6 +239,7 @@ private:
     PlayerConfig current_player_config;
     ScreenState current_screen;
     bool game_active;
+    mutable std::mutex state_mutex;
     EventSystem event_system;
     
     GlobalGameState() : current_screen(SCREEN_MAIN), game_active(false) {}
@@ -244,11 +249,8 @@ public:
     GlobalGameState& operator=(const GlobalGameState&) = delete;
     
     static GlobalGameState& getGlobalState() {
-        std::lock_guard<std::mutex> lock(instance_lock);
-        if (single_instance == nullptr) {
-            single_instance = new GlobalGameState();
-        }
-        return *single_instance;
+        static GlobalGameState instance;
+        return instance;
     }
     
     EventSystem& getEventSystem() { return event_system; }
@@ -265,13 +267,22 @@ public:
         event_system.sendEvent("config_updated", {true, "Player config changed"});
     }
     
-    ScreenState getScreen() const { return current_screen; }
+    ScreenState getScreen() const {
+        std::lock_guard<std::mutex> lock(state_mutex);
+        return current_screen;
+    }
     void switchScreen(ScreenState new_screen) { 
-        current_screen = new_screen; 
+        {
+            std::lock_guard<std::mutex> lock(state_mutex);
+            current_screen = new_screen;
+        }
         event_system.sendEvent("screen_changed", {true, "Screen switched"});
     }
     
-    bool isGameActive() const { return game_active; }
+    bool isGameActive() const {
+        std::lock_guard<std::mutex> lock(state_mutex);
+        return game_active;
+    }
     
     void registerEventListener(const std::string& event_name, std::function<void(const EventData&)> handler) {
         event_system.addListener(event_name, handler);
@@ -396,7 +407,7 @@ public:
         return game_state.getPlayerConfig().changeKeyboardPreset(layout_name);
     }
     
-    OperationResult setCustomKeybinds(const std::map<char, std::string>& key_map) {
+    OperationResult setCustomKeybinds(const std::unordered_map<char, std::string>& key_map) {
         return game_state.getPlayerConfig().changeCustomKeys(key_map);
     }
     
