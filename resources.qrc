@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/bg_menu.png</file>
+        <file>fonts/Bolgarus Beta.ttf</file>
+        <file>fonts/FREEFATFONT-Regular.otf</file>
+        <file>fonts/Wattauchimma.ttf</file>
+    </qresource>
+</RCC>

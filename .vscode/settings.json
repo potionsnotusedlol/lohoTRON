@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "qwindow": "cpp",
+        "qapplication": "cpp",
+        "qmainwindow": "cpp",
+        "qwidget": "cpp",
+        "qpainter": "cpp",
+        "qgraphicsdropshadoweffect": "cpp"
+    }
+}
