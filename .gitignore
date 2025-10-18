@@ -1,2 +1,4 @@
 build/
 *_old*
+.DS_Store
+.vscode/

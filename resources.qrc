@@ -4,5 +4,6 @@
         <file>fonts/Bolgarus Beta.ttf</file>
         <file>fonts/FREEFATFONT-Regular.otf</file>
         <file>fonts/Wattauchimma.ttf</file>
+        <file>fonts/TraktorMoodFont-Regular.otf</file>
     </qresource>
 </RCC>

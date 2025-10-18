@@ -20,23 +20,27 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
     auto *settings_label = new QLabel("SETTINGS");
     auto *player_name_hint = new QLabel("SET A NEW NICKNAME:");
     auto *player_name_input = new QLineEdit(this);
-    auto *key_rebinding_button = new QPushButton("KEY BINDINGS");
+    auto *bottom_layout = new QHBoxLayout(this);
+    auto *recolor_and_save_layout = new QVBoxLayout(this);
     auto *color_picker_hint = new QLabel("PICK A COLOR:");
     auto *color_picker_dropdown = new QComboBox(this);
-    auto *close_or_save_layout = new QHBoxLayout(this);
     auto *save_button = new QPushButton("SAVE");
+    auto *rebind_and_close_layout = new QVBoxLayout(this);
+    auto *key_rebinding_button = new QPushButton("KEY\nBINDINGS");
     auto *close_settings_button = new QPushButton("CLOSE");
 
     layout->addWidget(settings_label, 0, Qt::AlignCenter);
     layout->addStretch();
     layout->addWidget(player_name_hint, 0, Qt::AlignCenter);
     layout->addWidget(player_name_input, 0, Qt::AlignCenter);
-    layout->addWidget(key_rebinding_button, 0, Qt::AlignCenter);
-    layout->addWidget(color_picker_hint, 0, Qt::AlignCenter);
-    layout->addWidget(color_picker_dropdown, 0, Qt::AlignCenter);
-    layout->addLayout(close_or_save_layout);
-    close_or_save_layout->addWidget(save_button);
-    close_or_save_layout->addWidget(close_settings_button, 0, Qt::AlignCenter);
+    layout->addLayout(bottom_layout);
+    bottom_layout->addLayout(recolor_and_save_layout);
+    bottom_layout->addLayout(rebind_and_close_layout);
+    recolor_and_save_layout->addWidget(color_picker_hint, 0, Qt::AlignCenter);
+    recolor_and_save_layout->addWidget(color_picker_dropdown, 0, Qt::AlignCenter);
+    recolor_and_save_layout->addWidget(save_button, 0, Qt::AlignRight);
+    rebind_and_close_layout->addWidget(key_rebinding_button, 0, Qt::AlignCenter);
+    rebind_and_close_layout->addWidget(close_settings_button, 0, Qt::AlignLeft);
     
     // SETTINGS LABEL
     auto *text_glow = new QGraphicsDropShadowEffect(settings_label);
@@ -74,29 +78,31 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
     player_name_input->setFixedHeight(settings_window_height * 0.2);
     player_name_input->setStyleSheet(
         "font-size: 36pt;"
-        "color: black;"
-        "border: none;"
-        "background: rgb(242, 208, 164);"
+        "font-family: \"TrakTorMoodFont\";"
+        "color: rgb(192, 50, 33);"
+        "border: 3px solid rgb(242, 208, 164);"
+        "background: black;"
+        "placeholder-text-color: rgba(124, 122, 122, 1);"
     );
     player_name_input->setPlaceholderText("Type New Nickname");
 
     // REBIND KEYBOARD BUTTON
     auto *rebind_button_glow = new QGraphicsDropShadowEffect(key_rebinding_button);
     rebind_button_glow->setBlurRadius(12);
-    rebind_button_glow->setColor(qRgb(243, 233, 0));
+    rebind_button_glow->setColor(qRgb(192, 50, 33)); // asdas
     rebind_button_glow->setOffset(0, 0);
 
     key_rebinding_button->setGraphicsEffect(rebind_button_glow);
-    key_rebinding_button->setFixedWidth(settings_window_width * 1.25);
+    key_rebinding_button->setFixedWidth(settings_window_width * 0.5);
     key_rebinding_button->setFixedHeight(settings_window_height * 0.35);
     key_rebinding_button->setStyleSheet(
-        "font-size: 60pt;"
+        "font-size: 36pt;"
         "font-family: \"Wattauchimma\";"
         "color: black;"
         "border: none;"
         "margin-top: 20px;"
         "padding: 10px 10px 0 10px;"
-        "background: rgb(243, 233, 0);"
+        "background: rgb(192, 50, 33);"
     );
 
     // CHANGE PLAYER COLOR
@@ -138,6 +144,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
         "font-size: 60pt;"
         "font-family: \"FREE FAT FONT\";"
         "border: none;"
+        "margin-right: 20px;"
         "background: transparent;"
     );
     // CLOSE BUTTON
@@ -145,6 +152,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
         "font-size: 60pt;"
         "font-family: \"FREE FAT FONT\";"
         "border: none;"
+        "margin-left: 2px;"
         "background: transparent;"
     );
 
