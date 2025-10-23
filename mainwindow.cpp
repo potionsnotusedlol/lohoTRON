@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 #include <QGraphicsDropShadowEffect>
 #include "SettingsWindow.h"
+#include "CreatorsWindow.h"
+
 #include "GameStartWindow.h"
 
 tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_menu) {
@@ -15,11 +17,16 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
     );
     connect(ui->settings_button, &QPushButton::clicked, this,
         [this]() {
-            SettingsWindow settings_dlg(this);
-            settings_dlg.exec();
+            SettingsWindow dlg(this);
+            dlg.exec();
         }
     );
-    connect(ui->creators_info_button, SIGNAL(clicked()), this, SLOT(showCreatorsInfo()));
+    connect(ui->creators_info_button, &QPushButton::clicked, this,
+        [this]() {
+            CreatorsWindow creators_dlg(this);
+            creators_dlg.exec();
+        }
+    );
     connect(ui->quit_button, SIGNAL(clicked()), this, SLOT(killGameProcess()));
 
     // creating the blue glowiing effect (same for each button, different for logo_label)
@@ -52,28 +59,36 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
     ui->quit_button->setGraphicsEffect(glow_quit_game_menubutton);
     // setting styles for all the visible elements of the main menu (including ignoring the background image setting)
     ui->logo_label->setStyleSheet("background: transparent;"
-        "font-family: \"Bolgarus Beta\"; font-size: 200pt; color: rgb(0, 191, 255);"); // also added a font style
+    "font-family: \"Bolgarus Beta\"; font-size: 200pt; color: rgb(0, 191, 255);"); // also added a font style
+
     ui->start_button->setStyleSheet(
         "QPushButton {"
             "background: transparent;"
             "font-family: \"FREE FAT FONT\";"
             "font-size: 96pt;"
             "color: rgb(255, 255, 255);"
+            "border: none;"  
+            "outline: none;" 
         "}"
 
         "QPushButton:hover {"
-            "background: transparent;"
+            "background: transparent;" 
             "font-family: \"FREE FAT FONT\";"
             "font-size: 96pt;"
-            "color: rgb(0, 191, 255);"
+            "color: rgb(0, 191, 255);"  
+            "border: none;"  
+            "outline: none;" 
         "}"
     );
+
     ui->settings_button->setStyleSheet(
         "QPushButton {"
             "background: transparent;"
             "font-family: \"FREE FAT FONT\";"
             "font-size: 96pt;"
             "color: rgb(255, 255, 255);"
+            "border: none;"
+            "outline: none;"
         "}"
 
         "QPushButton:hover {"
@@ -81,14 +96,19 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
             "font-family: \"FREE FAT FONT\";"
             "font-size: 96pt;"
             "color: rgb(0, 191, 255);"
+            "border: none;"
+            "outline: none;"
         "}"
     );
+
     ui->creators_info_button->setStyleSheet(
         "QPushButton {"
             "background: transparent;"
             "font-family: \"FREE FAT FONT\";"
             "font-size: 96pt;"
             "color: rgb(255, 255, 255);"
+            "border: none;"
+            "outline: none;"
         "}"
 
         "QPushButton:hover {"
@@ -96,14 +116,19 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
             "font-family: \"FREE FAT FONT\";"
             "font-size: 96pt;"
             "color: rgb(0, 191, 255);"
+            "border: none;"
+            "outline: none;"
         "}"
     );
+
     ui->quit_button->setStyleSheet(
         "QPushButton {"
             "background: transparent;"
             "font-family: \"FREE FAT FONT\";"
             "font-size: 96pt;"
             "color: rgb(255, 255, 255);"
+            "border: none;"
+            "outline: none;"
         "}"
 
         "QPushButton:hover {"
@@ -111,6 +136,8 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
             "font-family: \"FREE FAT FONT\";"
             "font-size: 96pt;"
             "color: rgb(0, 191, 255);"
+            "border: none;"
+            "outline: none;"
         "}"
     );
 
@@ -122,7 +149,7 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
 tron_menu::~tron_menu() { delete ui; }
 
 void tron_menu::resizeEvent(QResizeEvent* event) {
-    QMainWindow::resizeEvent(event);
+    //QMainWindow::resizeEvent(event);
     updateSpacings();
 
     QPalette palette;
