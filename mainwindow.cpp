@@ -15,8 +15,8 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
     );
     connect(ui->settings_button, &QPushButton::clicked, this,
         [this]() {
-            SettingsWindow dlg(this);
-            dlg.exec();
+            SettingsWindow settings_dlg(this);
+            settings_dlg.exec();
         }
     );
     connect(ui->creators_info_button, SIGNAL(clicked()), this, SLOT(showCreatorsInfo()));

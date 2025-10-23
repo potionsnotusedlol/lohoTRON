@@ -2,7 +2,6 @@
 #define GAMESTARTWINDOW_H
 
 #include <QDialog>
-#include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include <QGraphicsDropShadowEffect>
 #include <QVBoxLayout>
@@ -11,6 +10,7 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QCloseEvent>
+#include <QAbstractAnimation>
 
 class GameStartWindow : public QDialog {
     Q_OBJECT

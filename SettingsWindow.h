@@ -2,7 +2,7 @@
 #define SETTINGSWINDOW_H
 
 #include <QDialog>
-#include <QGraphicsOpacityEffect>
+// #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include <QVBoxLayout>
 #include <QPushButton>
@@ -12,6 +12,8 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include <QGraphicsDropShadowEffect>
+#include <QWidget>
+#include <QAbstractAnimation>
 
 class SettingsWindow : public QDialog {
     Q_OBJECT

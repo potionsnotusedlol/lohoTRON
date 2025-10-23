@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.0.2)
 project(lohoTRON LANGUAGES CXX)
 set(CMAKE_AUTORCC ON)
-find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
 qt_standard_project_setup()
 
 qt_add_executable(lohoTRON

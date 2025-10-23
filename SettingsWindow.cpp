@@ -1,6 +1,9 @@
 #include "SettingsWindow.h"
 
-SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effect(new QGraphicsOpacityEffect(this)), fade_in_animation(new QPropertyAnimation(opacity_effect, "opacity", this)) {
+SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_effect(new QGraphicsOpacityEffect(this)), fade_in_animation(new QPropertyAnimation(opacity_effect, "opacity", this) )*/ {
+    fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
+
+    setWindowOpacity(0.0);
     setWindowTitle("Settings");
     resize(400, 300);
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
@@ -13,8 +16,8 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
         "font-family: \"Bolgarus Beta\";"
     );
 
-    setGraphicsEffect(opacity_effect);
-    opacity_effect->setOpacity(0.0);
+    // setGraphicsEffect(opacity_effect);
+    // opacity_effect->setOpacity(0.0);
 
     auto *layout = new QVBoxLayout(this);
     auto *settings_label = new QLabel("SETTINGS");
@@ -78,7 +81,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
     player_name_input->setFixedHeight(settings_window_height * 0.2);
     player_name_input->setStyleSheet(
         "font-size: 36pt;"
-        "font-family: \"TrakTorMoodFont\";"
+        "font-family: \"TraktorMoodFont\";"
         "color: rgb(192, 50, 33);"
         "border: 3px solid rgb(242, 208, 164);"
         "background: black;"
@@ -158,15 +161,32 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
 
     connect(save_button, &QPushButton::clicked, this, [this]() {});
     connect(close_settings_button, &QPushButton::clicked, this,
-        [this]() {
-            closing = true;
+        // [this]() {
+        //     if (closing) return;
 
-            fade_in_animation->stop();
-            fade_in_animation->setDuration(300);
-            fade_in_animation->setStartValue(opacity_effect->opacity());
-            fade_in_animation->setEndValue(0.0);
-            fade_in_animation->start();
-            connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { if (closing) close(); });
+        //     closing = true;
+
+        //     fade_in_animation->stop();
+        //     fade_in_animation = new QPropertyAnimation(this, "windowOpacity");
+        //     fade_in_animation->setDuration(300);
+        //     fade_in_animation->setStartValue(windowOpacity());
+        //     fade_in_animation->setEndValue(0.0);
+        //     connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
+        //     fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
+        // }
+
+        [this]() {
+            if (!closing) {      
+                closing = true;
+                auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+                fade_out->setDuration(300);
+                fade_out->setStartValue(windowOpacity());
+                fade_out->setEndValue(0.0);
+
+                connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
+
+                fade_out->start(QAbstractAnimation::DeleteWhenStopped);
+            }
         }
     );
 }
@@ -179,10 +199,12 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     closing = false;
 
     fade_in_animation->stop();
+    fade_in_animation->setTargetObject(this);
+    fade_in_animation->setPropertyName("windowOpacity");
     fade_in_animation->setDuration(300);
     fade_in_animation->setStartValue(0.0);
     fade_in_animation->setEndValue(1.0);
-    fade_in_animation->start();
+    fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void SettingsWindow::closeEvent(QCloseEvent* event) {
@@ -191,13 +213,14 @@ void SettingsWindow::closeEvent(QCloseEvent* event) {
         
         closing = true;
 
-        fade_in_animation->stop();
-        fade_in_animation->setDuration(300);
-        fade_in_animation->setStartValue(1.0);
-        fade_in_animation->setEndValue(0.0);
-        fade_in_animation->start();
+        auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+        fade_out->setDuration(300);
+        fade_out->setStartValue(windowOpacity());
+        fade_out->setEndValue(0.0);
 
-        connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
+        connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
+
+        fade_out->start(QAbstractAnimation::DeleteWhenStopped);
     }
     else QDialog::closeEvent(event);
 }
