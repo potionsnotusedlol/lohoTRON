@@ -49,7 +49,6 @@ target_link_libraries(lohoTRON
 qt_add_resources(APP_RESOURCES resources.qrc)
 target_sources(lohoTRON PRIVATE ${APP_RESOURCES})
 
->>>>>>> 4d53333 (rebuild CMakeLists to be cross-platform)
 install(TARGETS lohoTRON
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
