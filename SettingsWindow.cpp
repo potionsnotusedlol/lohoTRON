@@ -1,6 +1,6 @@
 #include "SettingsWindow.h"
 
-SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_effect(new QGraphicsOpacityEffect(this)), fade_in_animation(new QPropertyAnimation(opacity_effect, "opacity", this) )*/ {
+SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
 
     setWindowOpacity(0.0);
@@ -16,9 +16,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_ef
         "font-family: \"Bolgarus Beta\";"
     );
 
-    // setGraphicsEffect(opacity_effect);
-    // opacity_effect->setOpacity(0.0);
-
+    // initializing the interface elements
     auto *layout = new QVBoxLayout(this);
     auto *settings_label = new QLabel("SETTINGS");
     auto *player_name_hint = new QLabel("SET A NEW NICKNAME:");
@@ -32,6 +30,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_ef
     auto *key_rebinding_button = new QPushButton("KEY\nBINDINGS");
     auto *close_settings_button = new QPushButton("CLOSE");
 
+    // initializing the window layout
     layout->addWidget(settings_label, 0, Qt::AlignCenter);
     layout->addStretch();
     layout->addWidget(player_name_hint, 0, Qt::AlignCenter);
@@ -47,10 +46,10 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_ef
     
     // SETTINGS LABEL
     auto *text_glow = new QGraphicsDropShadowEffect(settings_label);
+
     text_glow->setBlurRadius(12);
     text_glow->setColor(qRgb(0, 255, 255));
     text_glow->setOffset(0, 0);
-
     settings_label->setGraphicsEffect(text_glow);
     settings_label->setStyleSheet(
         "font-size: 96px;"
@@ -60,10 +59,10 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_ef
 
     // RENAME PLAYER LINE EDIT
     auto *rename_hint_glow = new QGraphicsDropShadowEffect(player_name_hint);
+
     rename_hint_glow->setBlurRadius(12);
     rename_hint_glow->setColor(qRgb(192, 50, 33));
     rename_hint_glow->setOffset(0, 0);
-
     player_name_hint->setGraphicsEffect(rename_hint_glow);
     player_name_hint->setStyleSheet(
         "font-size: 36pt;"
@@ -91,10 +90,10 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_ef
 
     // REBIND KEYBOARD BUTTON
     auto *rebind_button_glow = new QGraphicsDropShadowEffect(key_rebinding_button);
+
     rebind_button_glow->setBlurRadius(12);
     rebind_button_glow->setColor(qRgb(192, 50, 33)); // asdas
     rebind_button_glow->setOffset(0, 0);
-
     key_rebinding_button->setGraphicsEffect(rebind_button_glow);
     key_rebinding_button->setFixedWidth(settings_window_width * 0.5);
     key_rebinding_button->setFixedHeight(settings_window_height * 0.35);
@@ -110,10 +109,10 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_ef
 
     // CHANGE PLAYER COLOR
     auto color_picker_hint_glow = new QGraphicsDropShadowEffect(color_picker_hint);
+
     color_picker_hint_glow->setBlurRadius(12);
     color_picker_hint_glow->setColor(qRgb(192, 50, 33));
     color_picker_hint_glow->setOffset(0, 0);
-
     color_picker_hint->setGraphicsEffect(color_picker_hint_glow);
     color_picker_hint->setStyleSheet(
         "font-size: 36pt;"
@@ -159,22 +158,9 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_ef
         "background: transparent;"
     );
 
+    // assigning bottom buttons their functionality
     connect(save_button, &QPushButton::clicked, this, [this]() {});
     connect(close_settings_button, &QPushButton::clicked, this,
-        // [this]() {
-        //     if (closing) return;
-
-        //     closing = true;
-
-        //     fade_in_animation->stop();
-        //     fade_in_animation = new QPropertyAnimation(this, "windowOpacity");
-        //     fade_in_animation->setDuration(300);
-        //     fade_in_animation->setStartValue(windowOpacity());
-        //     fade_in_animation->setEndValue(0.0);
-        //     connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
-        //     fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
-        // }
-
         [this]() {
             if (!closing) {      
                 closing = true;
@@ -191,6 +177,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent)/* , opacity_ef
     );
 }
 
+// opening fade in animation handler
 void SettingsWindow::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
 
@@ -207,13 +194,14 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
+// closing fade out animation handler
 void SettingsWindow::closeEvent(QCloseEvent* event) {
     if (!closing) {
         event->ignore();
-        
         closing = true;
 
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+        
         fade_out->setDuration(300);
         fade_out->setStartValue(windowOpacity());
         fade_out->setEndValue(0.0);

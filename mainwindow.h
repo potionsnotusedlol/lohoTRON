@@ -14,9 +14,6 @@ public:
     ~tron_menu();
 protected:
     void resizeEvent(QResizeEvent* event) override;
-// private slots:
-//     void showCreatorsInfo();
-//     void killGameProcess();
 private:
     Ui::tron_menu *ui;
 

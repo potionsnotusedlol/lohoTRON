@@ -3,9 +3,11 @@
 #include <QGraphicsDropShadowEffect>
 #include "SettingsWindow.h"
 #include "GameStartWindow.h"
+#include "QuitGameWindow.h"
 
 tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_menu) {
     ui->setupUi(this);
+
     // applying the buttons their function
     connect(ui->start_button, &QPushButton::clicked, this,
         [this]() {
@@ -19,27 +21,41 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
             settings_dlg.exec();
         }
     );
-    connect(ui->creators_info_button, SIGNAL(clicked()), this, SLOT(showCreatorsInfo()));
+    connect(ui->quit_button, &QPushButton::clicked, this, 
+        [this]() {
+            QuitGameWindow quit_dlg(this);
+            quit_dlg.exec();
+        }
+    );
     connect(ui->quit_button, SIGNAL(clicked()), this, SLOT(killGameProcess()));
 
     // creating the blue glowiing effect (same for each button, different for logo_label)
     auto glow_logo_label = new QGraphicsDropShadowEffect(ui->logo_label);
+
     glow_logo_label->setBlurRadius(20);
     glow_logo_label->setColor(qRgb(0, 191, 255));
     glow_logo_label->setOffset(0);
+
     auto glow_start_menubutton = new QGraphicsDropShadowEffect(ui->start_button);
+
     glow_start_menubutton->setBlurRadius(10);
     glow_start_menubutton->setColor(qRgb(0, 191, 255));
     glow_start_menubutton->setOffset(0);
+
     auto glow_settings_menubutton = new QGraphicsDropShadowEffect(ui->settings_button);
+
     glow_settings_menubutton->setBlurRadius(10);
     glow_settings_menubutton->setColor(qRgb(0, 191, 255));
     glow_settings_menubutton->setOffset(0);
+
     auto glow_creators_info_menubutton = new QGraphicsDropShadowEffect(ui->creators_info_button);
+
     glow_creators_info_menubutton->setBlurRadius(10);
     glow_creators_info_menubutton->setColor(qRgb(0, 191, 255));
     glow_creators_info_menubutton->setOffset(0);
+
     auto glow_quit_game_menubutton = new QGraphicsDropShadowEffect(ui->quit_button);
+
     glow_quit_game_menubutton->setBlurRadius(10);
     glow_quit_game_menubutton->setColor(qRgb(0, 191, 255));
     glow_quit_game_menubutton->setOffset(0);
@@ -121,17 +137,20 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
 
 tron_menu::~tron_menu() { delete ui; }
 
+// resize event listener
 void tron_menu::resizeEvent(QResizeEvent* event) {
     QMainWindow::resizeEvent(event);
     updateSpacings();
 
     QPalette palette;
     QPixmap bg(":/images/bg_menu.png");
+    
     palette.setBrush(QPalette::Window, QBrush(bg.scaled(size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
 
     this->setPalette(palette);
 }
 
+// rebuilding the interface according to new dimensions
 void tron_menu::updateSpacings() {
     int window_height = ui->centralwidget->height(), window_width = ui->centralwidget->width();
     int target_button_width = window_width * 0.56, target_button_height = window_height * 0.11;
@@ -148,7 +167,3 @@ void tron_menu::updateSpacings() {
         btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 }
-
-// void tron_menu::showCreatorsInfo() {}
-
-// void tron_menu::killGameProcess() {}

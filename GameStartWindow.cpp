@@ -1,6 +1,7 @@
 #include "GameStartWindow.h"
 
-GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent)/* , opacity_effect(new QGraphicsOpacityEffect(this)), fade_in_animation(new QPropertyAnimation(opacity_effect, "opacity", this)) */ {
+// check comments in SettingsWindow.cpp
+GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
 
     setWindowOpacity(0.0);
@@ -51,7 +52,6 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent)/* , opacity_
     bots_change_layout->addWidget(less_bots_button, 0, Qt::AlignCenter);
     layout->addWidget(start_game_button, 0, Qt::AlignCenter);
     layout->addWidget(cancel_game_button, 0, Qt::AlignLeft);
-
     game_set_label->setStyleSheet(
         "font-size: 84pt;"
         "border: none;"
@@ -159,38 +159,52 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent)/* , opacity_
     );
 
     auto top_label_glow = new QGraphicsDropShadowEffect(game_set_label);
+
     top_label_glow->setBlurRadius(24);
     top_label_glow->setColor(qRgb(0, 255, 255));
     top_label_glow->setOffset(0, 0);
+
     auto rounds_hint_glow = new QGraphicsDropShadowEffect(rounds_hint);
+
     rounds_hint_glow->setBlurRadius(20);
     rounds_hint_glow->setColor(qRgb(0, 255, 255));
     rounds_hint_glow->setOffset(0, 0);
+
     auto more_rounds_glow = new QGraphicsDropShadowEffect(more_rounds_button);
+
     more_rounds_glow->setBlurRadius(24);
     more_rounds_glow->setColor(qRgb(192, 50, 113));
     more_rounds_glow->setOffset(0, 0);
+
     auto less_rounds_glow = new QGraphicsDropShadowEffect(less_rounds_button);
+
     less_rounds_glow->setBlurRadius(24);
     less_rounds_glow->setColor(qRgb(192, 50, 113));
     less_rounds_glow->setOffset(0, 0);
+
     auto bots_hint_glow = new QGraphicsDropShadowEffect(bots_hint);
+
     bots_hint_glow->setBlurRadius(20);
     bots_hint_glow->setColor(qRgb(0, 255, 255));
     bots_hint_glow->setOffset(0, 0);
+
     auto more_bots_glow = new QGraphicsDropShadowEffect(more_bots_button);
+
     more_bots_glow->setBlurRadius(24);
     more_bots_glow->setColor(qRgb(242, 208, 164));
     more_bots_glow->setOffset(0, 0);
+
     auto less_bots_glow = new QGraphicsDropShadowEffect(less_bots_button);
+
     less_bots_glow->setBlurRadius(24);
     less_bots_glow->setColor(qRgb(242, 208, 164));
     less_bots_glow->setOffset(0, 0);
+
     auto start_game_glow = new QGraphicsDropShadowEffect(start_game_button);
+
     start_game_glow->setBlurRadius(36);
     start_game_glow->setColor(qRgb(0, 255, 255));
     start_game_glow->setOffset(0, 0);
-
     game_set_label->setGraphicsEffect(top_label_glow);
     rounds_hint->setGraphicsEffect(rounds_hint_glow);
     more_rounds_button->setGraphicsEffect(more_rounds_glow);
@@ -224,7 +238,6 @@ void GameStartWindow::showEvent(QShowEvent* event) {
     if (parentWidget()) move(parentWidget()->geometry().center() - rect().center());
 
     closing = false;
-
     fade_in_animation->stop();
     fade_in_animation->setTargetObject(this);
     fade_in_animation->setPropertyName("windowOpacity");
@@ -237,10 +250,10 @@ void GameStartWindow::showEvent(QShowEvent* event) {
 void GameStartWindow::closeEvent(QCloseEvent* event) {
     if (!closing) {
         event->ignore();
-
         closing = true;
 
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+        
         fade_out->setDuration(300);
         fade_out->setStartValue(windowOpacity());
         fade_out->setEndValue(0.0);

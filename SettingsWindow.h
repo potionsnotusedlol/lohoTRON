@@ -2,7 +2,6 @@
 #define SETTINGSWINDOW_H
 
 #include <QDialog>
-// #include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include <QVBoxLayout>
 #include <QPushButton>
