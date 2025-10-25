@@ -70,7 +70,7 @@ QuitGameWindow::QuitGameWindow(QWidget* parent) : QDialog(parent) {
     cancel_glow->setOffset(0, 0);
     cancel_quit_button->setGraphicsEffect(cancel_glow);
 
-    connect(confirm_quit_button, &QPushButton::clicked, this, [this]() { if (auto *mw = parentWidget()->parentWidget()->parentWidget()) mw->close(); }); // parent widget (stack) -> parent widget (main menu) -> parent widget (window)
+    connect(confirm_quit_button, &QPushButton::clicked, this, [this]() { if (auto *mw = parentWidget()) mw->close(); });
     connect(cancel_quit_button, &QPushButton::clicked, this, 
         [this]() {
             if (!closing) {
@@ -92,13 +92,8 @@ QuitGameWindow::QuitGameWindow(QWidget* parent) : QDialog(parent) {
 
 void QuitGameWindow::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
-    QWidget* win = window();
 
-    if (win) {
-        QRect g = win->geometry();
-
-        move(g.center() - rect().center());
-    }
+    if (parentWidget()) move(parentWidget()->geometry().center() - rect().center());
 
     closing = false;
     fade_animation->stop();

@@ -11,7 +11,10 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QCloseEvent>
-
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
 class GameStartWindow : public QDialog {
     Q_OBJECT
 public:
@@ -22,6 +25,11 @@ protected:
 private:
     QPropertyAnimation *fade_in_animation;
     bool closing = false;
+    
+    QLineEdit *rounds_count;
+    QLineEdit *bots_count;
+    void saveSettings();
+    void loadSettings();
 };
 
 #endif // GAMESTARTWINDOW_H
