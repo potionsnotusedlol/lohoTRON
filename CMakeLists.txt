@@ -1,11 +1,15 @@
-cmake_minimum_required(VERSION 4.0.2)
+cmake_minimum_required(VERSION 3.27)
 project(lohoTRON LANGUAGES CXX)
-set(CMAKE_AUTORCC ON)
-find_package(Qt6 6.5 REQUIRED COMPONENTS Core Widgets)
-qt_standard_project_setup()
 
-qt_add_executable(lohoTRON
-    WIN32 MACOSX_BUNDLE
+# --- Qt setup ---
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets)
+
+# --- Source files ---
+set(SOURCES
     main.cpp
     mainwindow.cpp
     mainwindow.h
@@ -18,17 +22,25 @@ qt_add_executable(lohoTRON
     QuitGameWindow.h
     CreatorsWindow.cpp
     CreatorsWindow.h
+    resources.qrc
 )
 
-target_link_libraries(lohoTRON
-    PRIVATE
-        Qt::Core
-        Qt::Widgets
+# --- Executable target ---
+qt_add_executable(lohoTRON
+    ${SOURCES}
 )
 
-qt_add_resources(APP_RESOURCES resources.qrc)
-target_sources(lohoTRON PRIVATE ${APP_RESOURCES})
+# --- Linking ---
+target_link_libraries(lohoTRON PRIVATE Qt6::Core Qt6::Widgets)
 
+# --- Platform-specific tweaks ---
+if(WIN32)
+    set_target_properties(lohoTRON PROPERTIES WIN32_EXECUTABLE TRUE)
+elseif(APPLE)
+    set_target_properties(lohoTRON PROPERTIES MACOSX_BUNDLE TRUE)
+endif()
+
+# --- Install setup ---
 include(GNUInstallDirs)
 
 install(TARGETS lohoTRON
@@ -37,10 +49,10 @@ install(TARGETS lohoTRON
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
 
+# --- Qt deployment script ---
 qt_generate_deploy_app_script(
     TARGET lohoTRON
     OUTPUT_SCRIPT deploy_script
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
-
 install(SCRIPT ${deploy_script})
