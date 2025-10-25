@@ -16,6 +16,8 @@ qt_add_executable(lohoTRON
     GameStartWindow.h
     QuitGameWindow.cpp
     QuitGameWindow.h
+    CreatorsWindow.cpp
+    CreatorsWindow.h
 )
 
 target_link_libraries(lohoTRON

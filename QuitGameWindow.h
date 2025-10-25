@@ -4,7 +4,6 @@
 #include <QDialog>
 #include <QWidget>
 #include <QCloseEvent>
-#include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include <QVBoxLayout>
 #include <QLabel>
@@ -21,7 +20,6 @@ protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
 private:
-    QGraphicsOpacityEffect *opacity_effect;
     QPropertyAnimation *fade_animation;
     bool closing = false;
 };

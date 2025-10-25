@@ -1,23 +1,23 @@
-#ifndef SETTINGSWINDOW_H
-#define SETTINGSWINDOW_H
+#ifndef CREATORSWINDOW_H
+#define CREATORSWINDOW_H
 
 #include <QDialog>
+#include <QWidget>
+#include <QCloseEvent>
 #include <QPropertyAnimation>
 #include <QVBoxLayout>
-#include <QPushButton>
 #include <QLabel>
-#include <QTimer>
-#include <QCloseEvent>
-#include <QLineEdit>
-#include <QComboBox>
-#include <QGraphicsDropShadowEffect>
-#include <QWidget>
+#include <QTextEdit>
+#include <QPushButton>
 #include <QAbstractAnimation>
+#include <QFile>
+#include <QTextStream>
+#include <QString>
 
-class SettingsWindow : public QDialog {
+class CreatorsWindow : public QDialog {
     Q_OBJECT
 public:
-    explicit SettingsWindow(QWidget* parent = nullptr);
+    explicit CreatorsWindow(QWidget* parent = nullptr);
 protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
@@ -26,4 +26,4 @@ private:
     bool closing = false;
 };
 
-#endif // SETTINGSWINDOW_H
+#endif // CREATORSWINDOW_H

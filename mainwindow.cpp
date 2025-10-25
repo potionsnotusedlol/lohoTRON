@@ -3,6 +3,7 @@
 #include <QGraphicsDropShadowEffect>
 #include "SettingsWindow.h"
 #include "GameStartWindow.h"
+#include "CreatorsWindow.h"
 #include "QuitGameWindow.h"
 
 tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_menu) {
@@ -12,23 +13,32 @@ tron_menu::tron_menu(QWidget* parent) : QMainWindow(parent), ui(new Ui::tron_men
     connect(ui->start_button, &QPushButton::clicked, this,
         [this]() {
             GameStartWindow game_dlg(this);
+
             game_dlg.exec();
         }
     );
     connect(ui->settings_button, &QPushButton::clicked, this,
         [this]() {
             SettingsWindow settings_dlg(this);
+
             settings_dlg.exec();
         }
     );
+    connect(ui->creators_info_button, &QPushButton::clicked, this,
+        [this]() {
+            CreatorsWindow creators_dlg(this);
+
+            creators_dlg.exec();
+        }
+    );
+
     connect(ui->quit_button, &QPushButton::clicked, this, 
         [this]() {
             QuitGameWindow quit_dlg(this);
+
             quit_dlg.exec();
         }
     );
-    connect(ui->quit_button, SIGNAL(clicked()), this, SLOT(killGameProcess()));
-
     // creating the blue glowiing effect (same for each button, different for logo_label)
     auto glow_logo_label = new QGraphicsDropShadowEffect(ui->logo_label);
 
@@ -144,7 +154,7 @@ void tron_menu::resizeEvent(QResizeEvent* event) {
 
     QPalette palette;
     QPixmap bg(":/images/bg_menu.png");
-    
+
     palette.setBrush(QPalette::Window, QBrush(bg.scaled(size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
 
     this->setPalette(palette);

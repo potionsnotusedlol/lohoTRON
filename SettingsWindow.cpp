@@ -164,7 +164,9 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
         [this]() {
             if (!closing) {      
                 closing = true;
+
                 auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+
                 fade_out->setDuration(300);
                 fade_out->setStartValue(windowOpacity());
                 fade_out->setEndValue(0.0);
@@ -184,7 +186,6 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     if (parentWidget()) move(parentWidget()->geometry().center() - rect().center());
 
     closing = false;
-
     fade_in_animation->stop();
     fade_in_animation->setTargetObject(this);
     fade_in_animation->setPropertyName("windowOpacity");
@@ -201,7 +202,7 @@ void SettingsWindow::closeEvent(QCloseEvent* event) {
         closing = true;
 
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
-        
+
         fade_out->setDuration(300);
         fade_out->setStartValue(windowOpacity());
         fade_out->setEndValue(0.0);

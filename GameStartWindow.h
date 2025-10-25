@@ -20,7 +20,6 @@ protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
 private:
-    QGraphicsOpacityEffect *opacity_effect;
     QPropertyAnimation *fade_in_animation;
     bool closing = false;
 };
