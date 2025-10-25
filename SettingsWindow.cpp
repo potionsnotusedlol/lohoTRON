@@ -188,14 +188,17 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
 
     connect(close_settings_button, &QPushButton::clicked, this,
         [this]() {
-            closing = true;
+            if (!closing) {      
+                closing = true;
+                auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+                fade_out->setDuration(300);
+                fade_out->setStartValue(windowOpacity());
+                fade_out->setEndValue(0.0);
 
-            fade_in_animation->stop();
-            fade_in_animation->setDuration(300);
-            fade_in_animation->setStartValue(opacity_effect->opacity());
-            fade_in_animation->setEndValue(0.0);
-            fade_in_animation->start();
-            connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { if (closing) close(); });
+                connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
+
+                fade_out->start(QAbstractAnimation::DeleteWhenStopped);
+            }
         }
     );
 }
@@ -206,7 +209,6 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     if (parentWidget()) move(parentWidget()->geometry().center() - rect().center());
 
     closing = false;
-
     fade_in_animation->stop();
     fade_in_animation->setDuration(300);
     fade_in_animation->setStartValue(0.0);
@@ -220,11 +222,11 @@ void SettingsWindow::closeEvent(QCloseEvent* event) {
         
         closing = true;
 
-        fade_in_animation->stop();
-        fade_in_animation->setDuration(300);
-        fade_in_animation->setStartValue(1.0);
-        fade_in_animation->setEndValue(0.0);
-        fade_in_animation->start();
+        auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+        
+        fade_out->setDuration(300);
+        fade_out->setStartValue(windowOpacity());
+        fade_out->setEndValue(0.0);
 
         connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
     }
