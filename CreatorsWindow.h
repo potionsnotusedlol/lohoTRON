@@ -2,32 +2,28 @@
 #define CREATORSWINDOW_H
 
 #include <QDialog>
-#include <QGraphicsOpacityEffect>
-#include <QPropertyAnimation>
+#include <QWidget>
 #include <QCloseEvent>
-#include <QShowEvent>
+#include <QPropertyAnimation>
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QTextEdit>
+#include <QPushButton>
+#include <QAbstractAnimation>
+#include <QFile>
+#include <QTextStream>
+#include <QString>
 
-class CreatorsWindow : public QDialog
-{
+class CreatorsWindow : public QDialog {
     Q_OBJECT
-
 public:
-    explicit CreatorsWindow(QWidget *parent = nullptr);
-    ~CreatorsWindow() = default; 
-
+    explicit CreatorsWindow(QWidget* parent = nullptr);
 protected:
-    void showEvent(QShowEvent *event) override;
-    void closeEvent(QCloseEvent *event) override;
-
-private slots:
-    void onCloseClicked();
-
+    void showEvent(QShowEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
 private:
-    bool closing = false;
-    QGraphicsOpacityEffect *opacity_effect;
     QPropertyAnimation *fade_in_animation;
-    
-    void setupUI();
+    bool closing = false;
 };
 
-#endif
+#endif // CREATORSWINDOW_H
