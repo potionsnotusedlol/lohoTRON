@@ -26,8 +26,12 @@ private:
     QPropertyAnimation *fade_in_animation;
     bool closing = false;
     
-    QLineEdit *rounds_count;
-    QLineEdit *bots_count;
+    QLineEdit *map_size_edit;      
+    QLineEdit *bot_count_edit;     
+    int map_size = 3;              
+    int bot_count = 1;             
+    
+    void updateBotCountDisplay();
     void saveSettings();
     void loadSettings();
 };
