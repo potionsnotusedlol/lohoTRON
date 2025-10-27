@@ -20,10 +20,10 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent), opacity_eff
     auto *game_set_label = new QLabel("NEW GAME SETTINGS");
     auto *setting_layout = new QHBoxLayout(this);
     auto *more_rounds_button = new QPushButton("+");
-    rounds_count = new QLineEdit(this);
+    map_size_edit = new QLineEdit(this);
     auto *less_rounds_button = new QPushButton("-");
     auto *more_bots_button = new QPushButton("HARDER");
-    bots_count = new QLineEdit(this);
+    bot_count_edit = new QLineEdit(this);
     auto *less_bots_button = new QPushButton("SIMPLER");
     auto *start_game_button = new QPushButton("READY");
     auto *cancel_game_button = new QPushButton("MENU");
@@ -32,27 +32,27 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent), opacity_eff
     layout->addStretch();
     layout->addLayout(setting_layout);
     setting_layout->addWidget(more_rounds_button, 0, Qt::AlignCenter);
-    setting_layout->addWidget(rounds_count, 0, Qt::AlignCenter);
+    setting_layout->addWidget(map_size_edit, 0, Qt::AlignCenter);
     setting_layout->addWidget(less_rounds_button, 0, Qt::AlignCenter);
     setting_layout->addWidget(more_bots_button, 0, Qt::AlignCenter);
-    setting_layout->addWidget(bots_count, 0, Qt::AlignCenter);
+    setting_layout->addWidget(bot_count_edit, 0, Qt::AlignCenter);
     setting_layout->addWidget(less_bots_button, 0, Qt::AlignCenter);
     layout->addWidget(start_game_button, 0, Qt::AlignCenter);
     layout->addWidget(cancel_game_button, 0, Qt::AlignCenter);
 
-    rounds_count->setReadOnly(true);
-    rounds_count->setAlignment(Qt::AlignCenter);
-    rounds_count->setStyleSheet("background-color: rgba(255,255,255,30); color: cyan; border: 1px solid cyan;");
-    rounds_count->setFixedWidth(50);
-    //rounds_count->setText("1");
+    map_size_edit->setReadOnly(true);
+    map_size_edit->setAlignment(Qt::AlignCenter);
+    map_size_edit->setStyleSheet("background-color: rgba(255,255,255,30); color: cyan; border: 1px solid cyan;");
+    map_size_edit->setFixedWidth(50);
 
-    bots_count->setReadOnly(true);
-    bots_count->setAlignment(Qt::AlignCenter);
-    bots_count->setStyleSheet("background-color: rgba(255,255,255,30); color: cyan; border: 1px solid cyan;");
-
-    bots_count->setFixedWidth(80);
-    //bots_count->setText("MEDIUM");
+    bot_count_edit->setReadOnly(true);
+    bot_count_edit->setAlignment(Qt::AlignCenter);
+    bot_count_edit->setStyleSheet("background-color: rgba(255,255,255,30); color: cyan; border: 1px solid cyan;");
+    bot_count_edit->setFixedWidth(80);
+    
     loadSettings();
+
+    updateBotCountDisplay();
 
     connect(start_game_button, &QPushButton::clicked, this, [this]() {});
     connect(cancel_game_button, &QPushButton::clicked, this,
@@ -69,31 +69,31 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent), opacity_eff
     );
 
     connect(more_rounds_button, &QPushButton::clicked, this, [this]() {
-        int current = rounds_count->text().toInt();
-        if (current < 10) {
-            rounds_count->setText(QString::number(current + 1));
-    }
-    });
-
-    connect(less_rounds_button, &QPushButton::clicked, this, [this]() {
-        int current = rounds_count->text().toInt();
-        if (current > 1) {
-            rounds_count->setText(QString::number(current - 1));
+        if (map_size < 20) {
+            map_size++;
+            map_size_edit->setText(QString::number(map_size));
         }
     });
-
-    connect(more_bots_button, &QPushButton::clicked, this, [this]() {
-        QString current = bots_count->text();
-        if (current == "EASY") bots_count->setText("MEDIUM");
-        else if (current == "MEDIUM") bots_count->setText("HARD");
-        else if (current == "HARD") bots_count->setText("EXTREME");
+    
+    connect(less_rounds_button, &QPushButton::clicked, this, [this]() {
+        if (map_size > 3) { 
+            map_size--;
+            map_size_edit->setText(QString::number(map_size));
+        }
     });
-
+    
+    connect(more_bots_button, &QPushButton::clicked, this, [this]() {
+        if (bot_count < 10) {
+            bot_count++;
+            updateBotCountDisplay();
+        }
+    });
+    
     connect(less_bots_button, &QPushButton::clicked, this, [this]() {
-        QString current = bots_count->text();
-        if (current == "EXTREME") bots_count->setText("HARD");
-        else if (current == "HARD") bots_count->setText("MEDIUM");
-        else if (current == "MEDIUM") bots_count->setText("EASY");
+        if (bot_count > 0) {
+            bot_count--;
+            updateBotCountDisplay();
+        }
     });
 
     connect(start_game_button, &QPushButton::clicked, this, [this]() {
@@ -133,7 +133,6 @@ void GameStartWindow::closeEvent(QCloseEvent* event) {
     else QDialog::closeEvent(event);
 }
 
-
 void GameStartWindow::saveSettings() {
     QFile file("game_config.json");
     if (!file.open(QIODevice::ReadWrite)) {
@@ -144,20 +143,23 @@ void GameStartWindow::saveSettings() {
     QJsonDocument doc = QJsonDocument::fromJson(data);
     QJsonObject obj = doc.object();
 
-    obj["rounds_count"] = rounds_count->text().toInt();
-    obj["difficulty"] = bots_count->text();
+    // Сохраняем новые параметры
+    obj["map_size"] = map_size;
+    obj["bot_count"] = bot_count;
 
     file.resize(0);
     file.write(QJsonDocument(obj).toJson());
     file.close();
 }
 
-
 void GameStartWindow::loadSettings() {
     QFile file("game_config.json");
     if (!file.open(QIODevice::ReadOnly)) {
-        rounds_count->setText("1");
-        bots_count->setText("MEDIUM");
+        // Значения по умолчанию
+        map_size = 3;
+        bot_count = 1;
+        map_size_edit->setText(QString::number(map_size));
+        updateBotCountDisplay();
         return;
     }
 
@@ -166,28 +168,42 @@ void GameStartWindow::loadSettings() {
 
     QJsonDocument doc = QJsonDocument::fromJson(data);
     if (doc.isNull()) {
-        rounds_count->setText("1");
-        bots_count->setText("MEDIUM");
+        map_size = 3;
+        bot_count = 1;
+        map_size_edit->setText(QString::number(map_size));
+        updateBotCountDisplay();
         return;
     }
 
     QJsonObject obj = doc.object();
 
-    if (obj.contains("rounds_count")) {
-        rounds_count->setText(QString::number(obj["rounds_count"].toInt()));
+    if (obj.contains("map_size")) {
+        map_size = obj["map_size"].toInt();
+        if (map_size < 3) map_size = 3;
     } else {
-        rounds_count->setText("1");
+        map_size = 3;
     }
+    map_size_edit->setText(QString::number(map_size));
 
-    if (obj.contains("difficulty")) {
-        QString difficulty = obj["difficulty"].toString();
-        if (difficulty == "EASY" || difficulty == "MEDIUM" || 
-            difficulty == "HARD" || difficulty == "EXTREME") {
-            bots_count->setText(difficulty);
-        } else {
-            bots_count->setText("MEDIUM");
-        }
+    if (obj.contains("bot_count")) {
+        bot_count = obj["bot_count"].toInt();
+        if (bot_count < 0) bot_count = 0;
     } else {
-        bots_count->setText("MEDIUM");
+        bot_count = 1;
+    }
+    updateBotCountDisplay();
+}
+
+void GameStartWindow::updateBotCountDisplay() {
+    if (bot_count == 0) {
+        bot_count_edit->setText("NONE");
+    } else if (bot_count == 1) {
+        bot_count_edit->setText("EASY");
+    } else if (bot_count == 2) {
+        bot_count_edit->setText("MEDIUM");
+    } else if (bot_count == 3) {
+        bot_count_edit->setText("HARD");
+    } else {
+        bot_count_edit->setText("EXTREME");
     }
 }
