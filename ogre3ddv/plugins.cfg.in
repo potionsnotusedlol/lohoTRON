@@ -1,0 +1,10 @@
+PluginFolder=@OGRE_PLUGIN_DIR@
+Plugin=RenderSystem_GL3Plus
+Plugin=Plugin_ParticleFX
+Plugin=Codec_STBI
+Plugin=Plugin_BSPSceneManager
+Plugin=Plugin_PCZSceneManager
+Plugin=Plugin_OctreeZone
+Plugin=Plugin_OctreeSceneManager
+Plugin=Plugin_CgProgramManager
+Plugin=Plugin_DotSceneManager
