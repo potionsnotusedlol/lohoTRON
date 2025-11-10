@@ -1,10 +1,14 @@
 PluginFolder=@OGRE_PLUGIN_DIR@
+
+# Рендер
 Plugin=RenderSystem_GL3Plus
-Plugin=Plugin_ParticleFX
+
+# Кодеки и эффекты
 Plugin=Codec_STBI
+Plugin=Plugin_ParticleFX
+
+# (Опционально) менеджеры сцен:
 Plugin=Plugin_BSPSceneManager
 Plugin=Plugin_PCZSceneManager
 Plugin=Plugin_OctreeZone
 Plugin=Plugin_OctreeSceneManager
-Plugin=Plugin_CgProgramManager
-Plugin=Plugin_DotSceneManager

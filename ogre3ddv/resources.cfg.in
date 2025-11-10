@@ -1,4 +1,5 @@
 [General]
+# Медиа из пакета OGRE
 FileSystem=@OGRE_MEDIA_DIR@/materials/programs
 FileSystem=@OGRE_MEDIA_DIR@/materials/scripts
 FileSystem=@OGRE_MEDIA_DIR@/materials/textures
@@ -8,4 +9,7 @@ FileSystem=@OGRE_MEDIA_DIR@/fonts
 FileSystem=@OGRE_MEDIA_DIR@/DeferredShadingMedia
 FileSystem=@OGRE_MEDIA_DIR@/PCZAppMedia
 FileSystem=@OGRE_MEDIA_DIR@/RTShaderLib
+
+# Локальные ресурсы проекта
 FileSystem=./
+FileSystem=./media
