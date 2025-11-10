@@ -1,14 +1,8 @@
-PluginFolder=@OGRE_PLUGIN_DIR@
-
-# Рендер
-Plugin=RenderSystem_GL3Plus
-
-# Кодеки и эффекты
-Plugin=Codec_STBI
-Plugin=Plugin_ParticleFX
-
-# (Опционально) менеджеры сцен:
-Plugin=Plugin_BSPSceneManager
-Plugin=Plugin_PCZSceneManager
-Plugin=Plugin_OctreeZone
-Plugin=Plugin_OctreeSceneManager
+[General]
+FileSystem=@OGRE_MEDIA_DIR@
+FileSystem=@OGRE_MEDIA_DIR@/Main
+FileSystem=@OGRE_MEDIA_DIR@/materials/scripts
+FileSystem=@OGRE_MEDIA_DIR@/materials/textures
+FileSystem=@OGRE_MEDIA_DIR@/materials/programs
+FileSystem=@OGRE_MEDIA_DIR@/models
+FileSystem=@OGRE_MEDIA_DIR@/RTShaderLib
