@@ -1,29 +1,27 @@
 cmake_minimum_required(VERSION 3.27)
 
+project(OgreSample LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Имя проекта / exe
-set(OGRE_PROJECT_NAME "OgreSample")
-project(${OGRE_PROJECT_NAME} LANGUAGES CXX)
-
-# Где лежит Ogre, установленный через snap
+# OGRE, установленный через snap
 set(OGRE_DIR "/snap/ogre/current/lib/OGRE/cmake")
 find_package(OGRE REQUIRED)
 
-# --------- исходники ---------
-set(SRCS
-    ./main.cpp
-)
+# SDL2, установленный через apt
+find_package(SDL2 REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS})
 
-# --------- инклуды Ogre ---------
-# (тебе нужны заголовки Ogre и OgreBites)
-set(OGRE_INCLUDE_DIRS "/snap/ogre/current/include/OGRE")
-include_directories(${OGRE_INCLUDE_DIRS})
+# Исходники
+set(SRCS ./main.cpp)
 
-# --------- библиотеки Ogre ---------
-# ВАЖНО: сюда добавил OgreOverlay, он нужен для TrayManager/HUD
-set(OGRE_LIBRARIES
+# Инклуды Ogre (Ogre + OgreBites заголовки)
+include_directories("/snap/ogre/current/include/OGRE")
+
+add_executable(${PROJECT_NAME} ${SRCS})
+
+# Линковка OGRE + SDL2
+target_link_libraries(${PROJECT_NAME}
     OgreMain
     OgreBites
     OgreRTShaderSystem
@@ -31,23 +29,18 @@ set(OGRE_LIBRARIES
     RenderSystem_GL3Plus
     Plugin_ParticleFX
     Codec_STBI
+    ${SDL2_LIBRARIES}  # <-- Добавляем SDL2
 )
 
-# --------- исполняемый файл ---------
-add_executable(${OGRE_PROJECT_NAME} ${SRCS})
-
-target_link_libraries(${OGRE_PROJECT_NAME}
-    ${OGRE_LIBRARIES}
-)
-
-# RPATH, чтобы .so находились без танцев с LD_LIBRARY_PATH
-set_target_properties(${OGRE_PROJECT_NAME} PROPERTIES
+# RPATH, чтобы .so находились без экспорта LD_LIBRARY_PATH
+set_target_properties(${PROJECT_NAME} PROPERTIES
     INSTALL_RPATH "/snap/ogre/current/lib;/snap/ogre/current/lib/OGRE"
     BUILD_WITH_INSTALL_RPATH ON
 )
 
-# Конфиги плагинов и ресурсов (как у тебя было)
+# Конфиги плагинов и ресурсов
 set(OGRE_PLUGIN_DIR "/snap/ogre/current/lib/OGRE")
-set(OGRE_MEDIA_DIR "/snap/ogre/current/share/OGRE-14.4/Media")
-configure_file(plugins.cfg.in plugins.cfg @ONLY)
+set(OGRE_MEDIA_DIR  "/snap/ogre/current/share/OGRE-14.4/Media")
+
 configure_file(resources.cfg.in resources.cfg @ONLY)
+configure_file(plugins.cfg.in   plugins.cfg   @ONLY)
