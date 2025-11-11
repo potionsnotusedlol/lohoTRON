@@ -13,6 +13,8 @@
 #include <QGraphicsDropShadowEffect>
 #include <QWidget>
 #include <QAbstractAnimation>
+#include <QWidget>
+#include <QRect>
 
 class SettingsWindow : public QDialog {
     Q_OBJECT

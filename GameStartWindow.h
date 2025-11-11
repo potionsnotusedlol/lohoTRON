@@ -11,6 +11,8 @@
 #include <QLineEdit>
 #include <QCloseEvent>
 #include <QAbstractAnimation>
+#include <QWidget>
+#include <QRect>
 
 class GameStartWindow : public QDialog {
     Q_OBJECT

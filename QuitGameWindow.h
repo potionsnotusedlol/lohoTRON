@@ -11,6 +11,7 @@
 #include <QHBoxLayout>
 #include <QApplication>
 #include <QGraphicsDropShadowEffect>
+#include <QRect>
 
 class QuitGameWindow : public QDialog {
     Q_OBJECT

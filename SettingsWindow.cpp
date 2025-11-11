@@ -182,8 +182,13 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
 // opening fade in animation handler
 void SettingsWindow::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
+    QWidget* win = window();
 
-    if (parentWidget()) move(parentWidget()->geometry().center() - rect().center());
+    if (win) {
+        QRect g = win->geometry();
+
+        move(g.center() - rect().center());
+    }
 
     closing = false;
     fade_in_animation->stop();
