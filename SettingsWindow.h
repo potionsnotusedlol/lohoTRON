@@ -12,7 +12,8 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include <QGraphicsDropShadowEffect>
-#include <QHBoxLayout>
+#include <QWidget>
+#include <QAbstractAnimation>
 
 class SettingsWindow : public QDialog {
     Q_OBJECT
