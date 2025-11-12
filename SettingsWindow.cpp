@@ -1,7 +1,10 @@
 #include "SettingsWindow.h"
 #include "ConfigManager.h"
 #include "KeyBindingsWindow.h"
+#include "ConfigManager.h"
+#include "KeyBindingsWindow.h"
 
+SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effect(new QGraphicsOpacityEffect(this)), fade_in_animation(new QPropertyAnimation(opacity_effect, "opacity", this)) {
 SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effect(new QGraphicsOpacityEffect(this)), fade_in_animation(new QPropertyAnimation(opacity_effect, "opacity", this)) {
     setWindowTitle("Settings");
     resize(400, 300);
@@ -14,6 +17,12 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
         "border-radius: 10px;"
         "font-family: \"Bolgarus Beta\";"
     );
+
+    setGraphicsEffect(opacity_effect);
+    opacity_effect->setOpacity(0.0);
+    
+    auto& config = ConfigManager::instance();
+    config.loadConfig();
 
     setGraphicsEffect(opacity_effect);
     opacity_effect->setOpacity(0.0);
@@ -53,6 +62,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
     text_glow->setColor(qRgb(0, 255, 255));
     text_glow->setOffset(0, 0);
 
+
     settings_label->setGraphicsEffect(text_glow);
     settings_label->setStyleSheet(
         "font-size: 96px;"
@@ -65,6 +75,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
     rename_hint_glow->setBlurRadius(12);
     rename_hint_glow->setColor(qRgb(192, 50, 33));
     rename_hint_glow->setOffset(0, 0);
+
 
     player_name_hint->setGraphicsEffect(rename_hint_glow);
     player_name_hint->setStyleSheet(
@@ -79,11 +90,13 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
     int settings_window_width = this->width(), settings_window_height = this->height();
 
     player_name_input->setText(config.getPlayerName());
+    player_name_input->setText(config.getPlayerName());
     player_name_input->setMaxLength(50);
     player_name_input->setFixedWidth(settings_window_width * 1.4);
     player_name_input->setFixedHeight(settings_window_height * 0.2);
     player_name_input->setStyleSheet(
         "font-size: 36pt;"
+        "font-family: \"TrakTorMoodFont\";"
         "font-family: \"TrakTorMoodFont\";"
         "color: rgb(192, 50, 33);"
         "border: 3px solid rgb(242, 208, 164);"
@@ -97,6 +110,10 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
     rebind_button_glow->setBlurRadius(12);
     rebind_button_glow->setColor(qRgb(192, 50, 33)); // asdas
     rebind_button_glow->setOffset(0, 0);
+
+    key_rebinding_button->setCursor(Qt::PointingHandCursor);  
+    key_rebinding_button->setEnabled(true); 
+
 
     key_rebinding_button->setCursor(Qt::PointingHandCursor);  
     key_rebinding_button->setEnabled(true); 
@@ -120,11 +137,18 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
         key_bindings_dlg.exec();
     });
 
+    connect(key_rebinding_button, &QPushButton::clicked, this, [this]() {
+
+        KeyBindingsWindow key_bindings_dlg(this);
+        key_bindings_dlg.exec();
+    });
+
     // CHANGE PLAYER COLOR
     auto color_picker_hint_glow = new QGraphicsDropShadowEffect(color_picker_hint);
     color_picker_hint_glow->setBlurRadius(12);
     color_picker_hint_glow->setColor(qRgb(192, 50, 33));
     color_picker_hint_glow->setOffset(0, 0);
+
 
     color_picker_hint->setGraphicsEffect(color_picker_hint_glow);
     color_picker_hint->setStyleSheet(
@@ -144,6 +168,12 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
     color_picker_dropdown->addItem("cyan");
     color_picker_dropdown->addItem("red");
     
+    QString currentColor = config.getPlayerColor();
+    int index = color_picker_dropdown->findText(currentColor);
+    if (index >= 0) {
+        color_picker_dropdown->setCurrentIndex(index);
+    }
+
     QString currentColor = config.getPlayerColor();
     int index = color_picker_dropdown->findText(currentColor);
     if (index >= 0) {
@@ -186,19 +216,26 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent), opacity_effec
         }
     );
 
+    connect(save_button, &QPushButton::clicked, this, 
+        [this, player_name_input, color_picker_dropdown]() {
+            auto& config = ConfigManager::instance();
+            config.setPlayerName(player_name_input->text());
+            config.setPlayerColor(color_picker_dropdown->currentText());
+            bool success = config.saveConfig();
+            qDebug() << "Settings save" << (success ? "successful" : "failed");
+        }
+    );
+
     connect(close_settings_button, &QPushButton::clicked, this,
         [this]() {
-            if (!closing) {      
-                closing = true;
-                auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
-                fade_out->setDuration(300);
-                fade_out->setStartValue(windowOpacity());
-                fade_out->setEndValue(0.0);
+            closing = true;
 
-                connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
-
-                fade_out->start(QAbstractAnimation::DeleteWhenStopped);
-            }
+            fade_in_animation->stop();
+            fade_in_animation->setDuration(300);
+            fade_in_animation->setStartValue(opacity_effect->opacity());
+            fade_in_animation->setEndValue(0.0);
+            fade_in_animation->start();
+            connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { if (closing) close(); });
         }
     );
 }
@@ -207,12 +244,15 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
 
     if (parentWidget()) move(parentWidget()->geometry().center() - rect().center());
+    if (parentWidget()) move(parentWidget()->geometry().center() - rect().center());
 
     closing = false;
+
     fade_in_animation->stop();
     fade_in_animation->setDuration(300);
     fade_in_animation->setStartValue(0.0);
     fade_in_animation->setEndValue(1.0);
+    fade_in_animation->start();
     fade_in_animation->start();
 }
 
@@ -220,17 +260,43 @@ void SettingsWindow::closeEvent(QCloseEvent* event) {
     if (!closing) {
         event->ignore();
         
+        
         closing = true;
 
-        auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
-        
-        fade_out->setDuration(300);
-        fade_out->setStartValue(windowOpacity());
-        fade_out->setEndValue(0.0);
+        fade_in_animation->stop();
+        fade_in_animation->setDuration(300);
+        fade_in_animation->setStartValue(1.0);
+        fade_in_animation->setEndValue(0.0);
+        fade_in_animation->start();
 
+        connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
         connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
     }
     else QDialog::closeEvent(event);
+}
+
+
+void SettingsWindow::onSaveClicked()
+{
+    auto& config = ConfigManager::instance();
+    config.setPlayerName(player_name_input->text());
+    config.setPlayerColor(color_picker_dropdown->currentText());
+    bool success = config.saveConfig();
+    qDebug() << "Settings saved:" << (success ? "success" : "failed");
+}
+
+
+void SettingsWindow::onCloseClicked()
+{
+    closing = true;
+    fade_in_animation->stop();
+    fade_in_animation->setDuration(300);
+    fade_in_animation->setStartValue(opacity_effect->opacity());
+    fade_in_animation->setEndValue(0.0);
+    fade_in_animation->start();
+    connect(fade_in_animation, &QPropertyAnimation::finished, this, [this]() { 
+        if (closing) close(); 
+    });
 }
 
 
