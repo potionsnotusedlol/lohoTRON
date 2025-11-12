@@ -2,11 +2,12 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "MainMenuWidget.h"
-#include "GameProcess.h"
-#include <QStackedWidget>
 
-class mainwindow : public QMainWindow {
+QT_BEGIN_NAMESPACE
+namespace Ui { class tron_menu; }
+QT_END_NAMESPACE
+
+class tron_menu : public QMainWindow {
     Q_OBJECT
 public:
     mainwindow(QWidget * parent = nullptr);
