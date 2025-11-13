@@ -13,6 +13,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QString>
+#include <QRect>
 
 class CreatorsWindow : public QDialog {
     Q_OBJECT

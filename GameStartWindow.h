@@ -2,7 +2,6 @@
 #define GAMESTARTWINDOW_H
 
 #include <QDialog>
-#include <QGraphicsOpacityEffect>
 #include <QPropertyAnimation>
 #include <QGraphicsDropShadowEffect>
 #include <QVBoxLayout>
@@ -11,10 +10,10 @@
 #include <QPushButton>
 #include <QLineEdit>
 #include <QCloseEvent>
-#include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonValue>
+#include <QAbstractAnimation>
+#include <QWidget>
+#include <QRect>
+
 class GameStartWindow : public QDialog {
     Q_OBJECT
 public:
@@ -23,18 +22,8 @@ protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
 private:
-    QGraphicsOpacityEffect *opacity_effect;
     QPropertyAnimation *fade_in_animation;
     bool closing = false;
-    
-    QLineEdit *map_size_edit;      
-    QLineEdit *bot_count_edit;     
-    int map_size = 3;              
-    int bot_count = 1;             
-    
-    void updateBotCountDisplay();
-    void saveSettings();
-    void loadSettings();
 };
 
 #endif // GAMESTARTWINDOW_H

@@ -1,0 +1,3 @@
+PluginFolder=/opt/local/lib
+
+Plugin=RenderSystem_GL3Plus
