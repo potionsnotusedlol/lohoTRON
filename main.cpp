@@ -14,8 +14,9 @@ int main(int argc, char* argv[]) {
     // loading fonts into program DB
     for (const QString& font_path : fonts) int id = QFontDatabase::addApplicationFont(font_path);
 
-    tron_menu w;
-    w.show();
+    mainwindow w;
+
+    w.showFullScreen();
 
     return a.exec();
 }
