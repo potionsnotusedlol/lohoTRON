@@ -18,14 +18,18 @@ static void ClearCenterDialog(OgreBites::TrayManager* tm)
 
 GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     std::srand(unsigned(std::time(nullptr)));
-    
+
     setFocusPolicy(Qt::StrongFocus);
     setMouseTracking(true);
+
+    setAttribute(Qt::WA_AcceptTouchEvents, false);
     
     mTimer = new QTimer(this);
     connect(mTimer, &QTimer::timeout, this, [this]() { update(); });
     
     mSpawnsStatic = { Vector3(0,0,0), Vector3(20,0,20), Vector3(-25,0,-15), Vector3(-15,0,30) };
+    
+    qDebug() << "GameProcess constructor - focus policy:" << focusPolicy();
 }
 
 GameProcess::~GameProcess() {
@@ -758,4 +762,60 @@ void GameProcess::hideGameEndDialog() {
     if (!mTrayMgr) return;
     ClearCenterDialog(mTrayMgr);
     mState = GameState::Playing;
+}
+
+
+void GameProcess::showEvent(QShowEvent* event) {
+    QOpenGLWidget::showEvent(event);
+    qDebug() << "GameProcess shown - size:" << size();
+    
+    // Активируем игру при показе
+    activateGame();
+}
+
+void GameProcess::focusInEvent(QFocusEvent* event) {
+    QOpenGLWidget::focusInEvent(event);
+    qDebug() << "GameProcess gained focus";
+    
+    // При получении фокуса активируем захват ввода
+    activateGame();
+}
+
+void GameProcess::focusOutEvent(QFocusEvent* event) {
+    QOpenGLWidget::focusOutEvent(event);
+    qDebug() << "GameProcess lost focus";
+    
+    // При потере фокуса освобождаем захват
+    releaseKeyboard();
+    releaseMouse();
+    setCursor(Qt::ArrowCursor);
+}
+
+void GameProcess::activateGame() {
+    setFocus();
+    grabKeyboard();
+    grabMouse();
+    setCursor(Qt::BlankCursor);
+    qDebug() << "Game activated - input captured";
+}
+
+// В методе keyPressEvent добавьте обработку Escape для возврата в меню:
+void GameProcess::keyPressEvent(QKeyEvent* event) {
+    switch (event->key()) {
+        case Qt::Key_W: mForward = true; break;
+        case Qt::Key_S: mBackward = true; break;
+        case Qt::Key_A: mLeft = true; break;
+        case Qt::Key_D: mRight = true; break;
+        case Qt::Key_Escape: 
+            if (mState == GameState::Playing) {
+                showPauseDialog();
+            }
+            else if (mState == GameState::Paused) {
+                resumeFromPause();
+            }
+            // Добавьте возможность выхода в главное меню
+            emit returnToMenuRequested();
+            break;
+        default: break;
+    }
 }

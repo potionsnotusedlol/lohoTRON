@@ -12,6 +12,7 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QTimer>
+#include <QMessageBox>
 #include <deque>
 #include <vector>
 #include <random>
@@ -86,22 +87,42 @@ public:
 
     // TrayListener methods
     void buttonHit(Button* b) override;
+    
     void setGameSettings(int roundsToWin, int numberOfBots) {
         mRoundsToWin = roundsToWin;
         mNumberOfBots = numberOfBots;
+        std::cout << "Game settings: rounds=" << mRoundsToWin << ", bots=" << mNumberOfBots << std::endl;
+        
+        // Если OGRE уже инициализирован, перезапускаем игру
+        if (mRoot) {
+            startMatchFresh();
+        }
     }
+
+    // Метод для принудительной активации в полноэкранном режиме
+    void activateGame() {
+        setFocus();
+        grabKeyboard();
+        grabMouse();
+        setCursor(Qt::BlankCursor);
+    }
+
+signals:
+    void returnToMenuRequested();
 
 protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
     void paintGL() override;
-    int mNumberOfBots = 3;
     void keyPressEvent(QKeyEvent* event) override;
     void keyReleaseEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void focusInEvent(QFocusEvent* event) override;
+    void focusOutEvent(QFocusEvent* event) override;
 
 private:
     // Ogre objects
@@ -154,6 +175,7 @@ private:
     // Game state
     GameState mState = GameState::Playing;
     int  mRoundsToWin = 3;
+    int  mNumberOfBots = 3;
     int  mPlayerWins = 0, mBotsWins = 0;
     int  mRoundIndex = 1;
     float mRoundStartTime = 0.0f;
