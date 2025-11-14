@@ -1,6 +1,6 @@
 #include "GameStartWindow.h"
+#include <QApplication>
 
-// check comments in SettingsWindow.cpp
 GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
 
@@ -24,13 +24,13 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     auto *rounds_hint = new QLabel("ROUNDS:");
     auto *change_rounds_layout = new QHBoxLayout(this);
     auto *more_rounds_button = new QPushButton("+");
-    auto *rounds_count = new QLineEdit(this);
+    rounds_count = new QLineEdit(this);
     auto *less_rounds_button = new QPushButton("-");
     auto *set_bots_layout = new QVBoxLayout(this);
     auto *bots_hint = new QLabel("BOTS:");
     auto *bots_change_layout = new QHBoxLayout(this);
     auto *more_bots_button = new QPushButton("HARDER");
-    auto *bots_count = new QLineEdit(this);
+    bots_count = new QLineEdit(this);
     auto *less_bots_button = new QPushButton("SIMPLER");
     auto *start_game_button = new QPushButton("READY");
     auto *cancel_game_button = new QPushButton("← MENU");
@@ -52,6 +52,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     bots_change_layout->addWidget(less_bots_button, 0, Qt::AlignCenter);
     layout->addWidget(start_game_button, 0, Qt::AlignCenter);
     layout->addWidget(cancel_game_button, 0, Qt::AlignLeft);
+    
     game_set_label->setStyleSheet(
         "font-size: 84pt;"
         "border: none;"
@@ -78,6 +79,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "padding-bottom: 5px;"
         "background: rgb(192, 50, 113);"
     );
+    
     rounds_count->setFixedWidth(start_window_height * 0.3);
     rounds_count->setFixedHeight(start_window_width * 0.2);
     rounds_count->setStyleSheet(
@@ -87,6 +89,9 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "border: 3px solid rgb(242, 208, 164);"
         "background: black;"
     );
+    rounds_count->setReadOnly(true);
+    rounds_count->setAlignment(Qt::AlignCenter);
+    
     less_rounds_button->setFixedWidth(start_window_width * 0.2);
     less_rounds_button->setFixedHeight(start_window_height * 0.2);
     less_rounds_button->setStyleSheet(
@@ -98,6 +103,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "padding-bottom: 5px;"
         "background: rgb(192, 50, 113);"
     );
+    
     bots_hint->setStyleSheet(
         "font-size: 48pt;"
         "font-family: \"Wattauchimma\";"
@@ -105,6 +111,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "border: none;"
         "background: transparent;"
     );
+    
     more_bots_button->setFixedWidth(start_window_width * 0.4);
     more_bots_button->setFixedHeight(start_window_height * 0.2);
     more_bots_button->setStyleSheet(
@@ -116,6 +123,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "padding-bottom: 3px;"
         "background: rgb(242, 208, 164);"
     );
+    
     bots_count->setFixedWidth(start_window_height * 0.3);
     bots_count->setFixedHeight(start_window_width * 0.2);
     bots_count->setStyleSheet(
@@ -125,6 +133,9 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "border: 3px solid rgb(192, 50, 113);"
         "background: black;"
     );
+    bots_count->setReadOnly(true);
+    bots_count->setAlignment(Qt::AlignCenter);
+    
     less_bots_button->setFixedWidth(start_window_width * 0.4);
     less_bots_button->setFixedHeight(start_window_height * 0.2);
     less_bots_button->setStyleSheet(
@@ -136,6 +147,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "padding-bottom: 3px;"
         "background: rgb(242, 208, 164);"
     );
+    
     start_game_button->setStyleSheet(
         "QPushButton {"
             "font-size: 72pt;"
@@ -145,12 +157,12 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
             "padding-bottom: 10px;"
             "padding-left: 10px;"
             "padding-right: 10px;"
-            "margin-top: 2xPx0px;"
+            "margin-top: 20px;"
             "background-color: cyan;"
         "}"
-
         "QPushButton:hover { background-color: rgb(73, 159, 104); }"
     );
+    
     cancel_game_button->setStyleSheet(
         "font-size: 60pt;"
         "font-family: \"FREE FAT FONT\";"
@@ -159,52 +171,45 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     );
 
     auto top_label_glow = new QGraphicsDropShadowEffect(game_set_label);
-
     top_label_glow->setBlurRadius(24);
     top_label_glow->setColor(qRgb(0, 255, 255));
     top_label_glow->setOffset(0, 0);
 
     auto rounds_hint_glow = new QGraphicsDropShadowEffect(rounds_hint);
-
     rounds_hint_glow->setBlurRadius(20);
     rounds_hint_glow->setColor(qRgb(0, 255, 255));
     rounds_hint_glow->setOffset(0, 0);
 
     auto more_rounds_glow = new QGraphicsDropShadowEffect(more_rounds_button);
-
     more_rounds_glow->setBlurRadius(24);
     more_rounds_glow->setColor(qRgb(192, 50, 113));
     more_rounds_glow->setOffset(0, 0);
 
     auto less_rounds_glow = new QGraphicsDropShadowEffect(less_rounds_button);
-
     less_rounds_glow->setBlurRadius(24);
     less_rounds_glow->setColor(qRgb(192, 50, 113));
     less_rounds_glow->setOffset(0, 0);
 
     auto bots_hint_glow = new QGraphicsDropShadowEffect(bots_hint);
-
     bots_hint_glow->setBlurRadius(20);
     bots_hint_glow->setColor(qRgb(0, 255, 255));
     bots_hint_glow->setOffset(0, 0);
 
     auto more_bots_glow = new QGraphicsDropShadowEffect(more_bots_button);
-
     more_bots_glow->setBlurRadius(24);
     more_bots_glow->setColor(qRgb(242, 208, 164));
     more_bots_glow->setOffset(0, 0);
 
     auto less_bots_glow = new QGraphicsDropShadowEffect(less_bots_button);
-
     less_bots_glow->setBlurRadius(24);
     less_bots_glow->setColor(qRgb(242, 208, 164));
     less_bots_glow->setOffset(0, 0);
 
     auto start_game_glow = new QGraphicsDropShadowEffect(start_game_button);
-
     start_game_glow->setBlurRadius(36);
     start_game_glow->setColor(qRgb(0, 255, 255));
     start_game_glow->setOffset(0, 0);
+    
     game_set_label->setGraphicsEffect(top_label_glow);
     rounds_hint->setGraphicsEffect(rounds_hint_glow);
     more_rounds_button->setGraphicsEffect(more_rounds_glow);
@@ -214,7 +219,12 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     less_bots_button->setGraphicsEffect(less_bots_glow);
     start_game_button->setGraphicsEffect(start_game_glow);
 
-    connect(start_game_button, &QPushButton::clicked, this, [this]() {});
+    connect(more_rounds_button, &QPushButton::clicked, this, &GameStartWindow::increaseRounds);
+    connect(less_rounds_button, &QPushButton::clicked, this, &GameStartWindow::decreaseRounds);
+    connect(more_bots_button, &QPushButton::clicked, this, &GameStartWindow::increaseBots);
+    connect(less_bots_button, &QPushButton::clicked, this, &GameStartWindow::decreaseBots);
+    connect(start_game_button, &QPushButton::clicked, this, &GameStartWindow::startGame);
+    
     connect(cancel_game_button, &QPushButton::clicked, this,
         [this]() {
             if (!closing) {
@@ -230,6 +240,50 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
             }
         }
     );
+
+    updateRoundsDisplay();
+    updateBotsDisplay();
+}
+
+void GameStartWindow::increaseRounds() {
+    if (roundsCount < 10) {
+        roundsCount++;
+        updateRoundsDisplay();
+    }
+}
+
+void GameStartWindow::decreaseRounds() {
+    if (roundsCount > 1) {
+        roundsCount--;
+        updateRoundsDisplay();
+    }
+}
+
+void GameStartWindow::increaseBots() {
+    if (botsCount < 5) {
+        botsCount++;
+        updateBotsDisplay();
+    }
+}
+
+void GameStartWindow::decreaseBots() {
+    if (botsCount > 1) {
+        botsCount--;
+        updateBotsDisplay();
+    }
+}
+
+void GameStartWindow::startGame() {
+    emit gameStarted(roundsCount, botsCount);
+    close();
+}
+
+void GameStartWindow::updateRoundsDisplay() {
+    rounds_count->setText(QString::number(roundsCount));
+}
+
+void GameStartWindow::updateBotsDisplay() {
+    bots_count->setText(QString::number(botsCount));
 }
 
 void GameStartWindow::showEvent(QShowEvent* event) {
@@ -238,7 +292,6 @@ void GameStartWindow::showEvent(QShowEvent* event) {
 
     if (win) {
         QRect g = win->geometry();
-
         move(g.center() - rect().center());
     }
 
@@ -258,14 +311,14 @@ void GameStartWindow::closeEvent(QCloseEvent* event) {
         closing = true;
 
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
-        
         fade_out->setDuration(300);
         fade_out->setStartValue(windowOpacity());
         fade_out->setEndValue(0.0);
 
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
-        
-        fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
+        fade_out->start(QAbstractAnimation::DeleteWhenStopped);
     }
-    else QDialog::closeEvent(event);
+    else {
+        QDialog::closeEvent(event);
+    }
 }

@@ -11,12 +11,18 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
 
     // applying functions to buttons
     connect(ui->start_button, &QPushButton::clicked, this,
-        [this]() {
-            GameStartWindow game_dlg(this);
-
-            game_dlg.exec();
-        }
-    );
+    [this]() {
+        GameStartWindow *game_dlg = new GameStartWindow(this);
+        
+        connect(game_dlg, &GameStartWindow::gameStarted, this, 
+            [this](int rounds, int bots) {
+                emit startGameRequested(rounds, bots);
+            });
+        
+        game_dlg->exec();
+        delete game_dlg;
+    }
+);
     connect(ui->settings_button, &QPushButton::clicked, this,
         [this]() {
             SettingsWindow settings_dlg(this);

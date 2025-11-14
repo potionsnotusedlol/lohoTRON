@@ -12,6 +12,9 @@ class MainMenuWidget : public QWidget {
 public:
     explicit MainMenuWidget(QWidget* parent = nullptr);
     ~MainMenuWidget();
+
+signals:
+    void startGameRequested(int rounds, int bots);
 protected:
     void resizeEvent(QResizeEvent* event);
 private:
