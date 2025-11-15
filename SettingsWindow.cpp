@@ -31,7 +31,6 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     auto *close_settings_button = new QPushButton("CLOSE");
 
     // initializing the window layout
-    // initializing the window layout
     layout->addWidget(settings_label, 0, Qt::AlignCenter);
     layout->addStretch();
     layout->addWidget(player_name_hint, 0, Qt::AlignCenter);
@@ -47,7 +46,6 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     
     // SETTINGS LABEL
     auto *text_glow = new QGraphicsDropShadowEffect(settings_label);
-
 
     text_glow->setBlurRadius(12);
     text_glow->setColor(qRgb(0, 255, 255));
