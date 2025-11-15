@@ -60,6 +60,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     // RENAME PLAYER LINE EDIT
     auto *rename_hint_glow = new QGraphicsDropShadowEffect(player_name_hint);
 
+
     rename_hint_glow->setBlurRadius(12);
     rename_hint_glow->setColor(qRgb(192, 50, 33));
     rename_hint_glow->setOffset(0, 0);
@@ -91,6 +92,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     // REBIND KEYBOARD BUTTON
     auto *rebind_button_glow = new QGraphicsDropShadowEffect(key_rebinding_button);
 
+
     rebind_button_glow->setBlurRadius(12);
     rebind_button_glow->setColor(qRgb(192, 50, 33)); // asdas
     rebind_button_glow->setOffset(0, 0);
@@ -109,6 +111,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
 
     // CHANGE PLAYER COLOR
     auto color_picker_hint_glow = new QGraphicsDropShadowEffect(color_picker_hint);
+
 
     color_picker_hint_glow->setBlurRadius(12);
     color_picker_hint_glow->setColor(qRgb(192, 50, 33));
@@ -186,6 +189,10 @@ void SettingsWindow::showEvent(QShowEvent* event) {
 
     if (win) {
         QRect g = win->geometry();
+    QWidget* win = window();
+
+    if (win) {
+        QRect g = win->geometry();
 
         move(g.center() - rect().center());
     }
@@ -200,6 +207,7 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
+// closing fade out animation handler
 // closing fade out animation handler
 void SettingsWindow::closeEvent(QCloseEvent* event) {
     if (!closing) {
