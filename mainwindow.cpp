@@ -9,7 +9,7 @@ mainwindow::mainwindow(QWidget* parent) : QMainWindow(parent) {
     menu = new MainMenuWidget();
     
     // Создаем игровой процесс (но пока не инициализируем OGRE)
-    game_proc_window = new GameProcess();
+    game_proc_window = new GameProcess(this);
     
     // Добавляем виджеты в stacked
     stacked->addWidget(menu);

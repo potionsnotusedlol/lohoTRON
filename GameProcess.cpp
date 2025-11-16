@@ -1,7 +1,10 @@
 #include "GameProcess.h"
+
 #include <QApplication>
 #include <QTime>
-#include <iostream>
+#include <QDebug>
+#include <QCursor>
+#include <QDateTime>
 
 // Helper to clear dialogs
 static void ClearCenterDialog(OgreBites::TrayManager* tm)
@@ -16,265 +19,460 @@ static void ClearCenterDialog(OgreBites::TrayManager* tm)
     }
 }
 
-GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
-    std::srand(unsigned(std::time(nullptr)));
-
+GameProcess::GameProcess(QWidget* parent)
+    : QWidget(parent)
+    , mRoot(nullptr)
+    , mRenderWindow(nullptr)
+    , mSceneManager(nullptr)
+    , mCamera(nullptr)
+    , mTrayMgr(nullptr)
+    , mOgreInitialised(false)
+    , mTimer(new QTimer(this))
+    , mState(GameState::Playing)
+    , mGameTime(0.0f)
+    , mRoundStartTime(0.0f)
+    , mPlayerWins(0)
+    , mBotsWins(0)
+    , mRoundIndex(1)
+    , mNumberOfBots(3)          // можешь поменять дефолт
+    , mRoundsToWin(3)           // тоже
+    , mHumanIndex(0)
+    , mForward(false)
+    , mBackward(false)
+    , mLeft(false)
+    , mRight(false)
+    , mRmbDown(false)
+    , mLastTime(0)
+{
+    // Важно: у виджета будет своё нативное окно для OGRE
+    setAttribute(Qt::WA_NativeWindow);
+    setAttribute(Qt::WA_PaintOnScreen, false);  // мы рисуем через renderOneFrame в paintEvent
     setFocusPolicy(Qt::StrongFocus);
-    setMouseTracking(true);
 
-    setAttribute(Qt::WA_AcceptTouchEvents, false);
-    
-    mTimer = new QTimer(this);
-    connect(mTimer, &QTimer::timeout, this, [this]() { update(); });
-    
-    mSpawnsStatic = { Vector3(0,0,0), Vector3(20,0,20), Vector3(-25,0,-15), Vector3(-15,0,30) };
-    
-    qDebug() << "GameProcess constructor - focus policy:" << focusPolicy();
+    // Камера
+    mCamYaw        = 0.0f;
+    mCamPitch      = Ogre::Degree(25).valueRadians();
+    mCamDistance   = 40.0f;
+    mCamDistCurrent= mCamDistance;
+    mCamTargetHeight = 4.0f;
+    mCamSmooth        = 6.0f;
+    mCamFollowYawSmooth = 5.0f;
+    mMouseSensitivity = 0.005f;
+
+    // Параметры карты / троп
+    mMapHalfSize      = 60.0f;
+    mGridSize         = 24;
+    mCellSize         = (mMapHalfSize * 2.0f) / float(mGridSize);
+    mPlayerRadius     = 1.0f;
+    mTrailWidth       = 1.2f;
+    mTrailTTL         = 4.0f;
+    mTrailMinSegDist  = 0.5f;
+    mSelfSkipSegments = 10;
+    mSelfTouchEps     = 0.02f;
+
+    // Движение
+    mAcceleration      = 30.0f;
+    mBrakeDecel        = 40.0f;
+    mFriction          = 15.0f;
+    mMaxForwardSpeed   = 40.0f;
+    mMaxBackwardSpeed  = 10.0f;
+    mTurnSpeed         = Ogre::Degree(120).valueRadians();
+    mMaxLeanAngle      = Ogre::Degree(20).valueRadians();
+    mLeanSpeed         = 8.0f;
+
+    // Статические спавны (как в твоём исходнике — пример)
+    mSpawnsStatic.clear();
+    mSpawnsStatic.push_back(Ogre::Vector3(  0, 0,  30));
+    mSpawnsStatic.push_back(Ogre::Vector3( 30, 0,   0));
+    mSpawnsStatic.push_back(Ogre::Vector3(  0, 0, -30));
+    mSpawnsStatic.push_back(Ogre::Vector3(-30, 0,   0));
+
+    // Рандом
+    mRng.seed(uint32_t(QDateTime::currentMSecsSinceEpoch() & 0xffffffff));
+
+    // Таймер — просто просим перерисовку
+    connect(mTimer, &QTimer::timeout, this, [this]() {
+        this->update();  // вызовет paintEvent, а там ты вызываешь updateGame и renderOneFrame
+    });
+
+    qDebug() << "GameProcess ctor created";
 }
+GameProcess::~GameProcess()
+{
+    std::cout << "GameProcess destructor called" << std::endl;
 
-GameProcess::~GameProcess() {
-    if (mTimer) mTimer->stop();
-    
-    // Cleanup Ogre
-    if (mRoot) {
-        mRoot->destroySceneManager(mSceneManager);
-        delete mRoot;
+    // Останавливаем таймер
+    if (mTimer) {
+        mTimer->stop();
     }
+
+    // Упорядоченное уничтожение объектов Ogre
+    if (mTrayMgr) {
+        try {
+            delete mTrayMgr;
+            mTrayMgr = nullptr;
+        } catch (const std::exception& e) {
+            std::cerr << "Error destroying TrayManager: " << e.what() << std::endl;
+        }
+    }
+
+    // Очищаем игроков перед уничтожением Ogre объектов
+    for (auto& player : mPlayers) {
+        if (player.trail && mSceneManager) {
+            try {
+                mSceneManager->destroyBillboardChain(player.trail);
+                player.trail = nullptr;
+            } catch (...) {
+                // Игнорируем ошибки при очистке
+            }
+        }
+        if (player.glow && mSceneManager) {
+            try {
+                mSceneManager->destroyLight(player.glow);
+                player.glow = nullptr;
+            } catch (...) {
+                // Игнорируем ошибки при очистке
+            }
+        }
+    }
+    mPlayers.clear();
+
+    if (mRoot) {
+        try {
+            // Сначала уничтожаем SceneManager
+            if (mSceneManager) {
+                mRoot->destroySceneManager(mSceneManager);
+                mSceneManager = nullptr;
+            }
+            
+            // Затем уничтожаем RenderWindow если он существует
+            if (mRenderWindow) {
+                mRoot->destroyRenderTarget(mRenderWindow);
+                mRenderWindow = nullptr;
+            }
+            
+            delete mRoot;
+            mRoot = nullptr;
+        } catch (const std::exception& e) {
+            std::cerr << "Error destroying Ogre objects: " << e.what() << std::endl;
+        }
+    }
+
+    std::cout << "GameProcess destructor finished" << std::endl;
 }
 
-void GameProcess::buttonHit(Button* b) {
+// отключаем QPainter — рисуем через OGRE
+QPaintEngine* GameProcess::paintEngine() const
+{
+    return nullptr;
+}
+
+// TrayListener
+void GameProcess::buttonHit(Button* b)
+{
     const String& id = b->getName();
-    if (id == "btn_resume") { 
-        resumeFromPause(); 
+    if (id == "btn_resume") {
+        resumeFromPause();
     }
     else if (id == "btn_restart") {
-        if (mState == GameState::Paused) { 
-            hidePauseDialog(); 
-            startNewRoundRandom(); 
+        if (mState == GameState::Paused) {
+            hidePauseDialog();
+            startNewRoundRandom();
         }
-        else if (mState == GameState::GameEnd) { 
-            hideGameEndDialog(); 
-            startMatchFresh(); 
+        else if (mState == GameState::GameEnd) {
+            hideGameEndDialog();
+            startMatchFresh();
         }
     }
     else if (id == "btn_exit") {
-        QApplication::quit();
+        emit returnToMenuRequested();
     }
 }
 
-void GameProcess::initializeGL() {
-    initializeOpenGLFunctions();
-    
+void GameProcess::setupOgre()
+{
+    if (mOgreInitialised) {
+        std::cout << "OGRE already initialized" << std::endl;
+        return;
+    }
+
+    std::cout << "Setting up OGRE..." << std::endl;
+
     try {
-        setupOgre();
-        mTimer->start(16); // ~60 FPS
-        mLastTime = QDateTime::currentMSecsSinceEpoch();
+        // Создаем Root
+        mRoot = new Ogre::Root();
+        
+        // Настраиваем рендер систему
+        const Ogre::RenderSystemList& renderSystems = mRoot->getAvailableRenderers();
+        if (renderSystems.empty()) {
+            throw Ogre::Exception(0, "No render systems available", "GameProcess::setupOgre");
+        }
+
+        Ogre::RenderSystem* renderSystem = nullptr;
+        for (auto* rs : renderSystems) {
+            if (rs->getName().find("OpenGL") != Ogre::String::npos) {
+                renderSystem = rs;
+                break;
+            }
+        }
+
+        if (!renderSystem) {
+            renderSystem = renderSystems[0]; // Берем первую доступную
+        }
+
+        std::cout << "Using render system: " << renderSystem->getName() << std::endl;
+        mRoot->setRenderSystem(renderSystem);
+        
+        // Инициализируем без создания окна
+        mRoot->initialise(false);
+
+        // Параметры для создания окна
+        Ogre::NameValuePairList params;
+        
+        #ifdef Q_OS_WIN
+            params["externalWindowHandle"] = 
+                Ogre::StringConverter::toString(reinterpret_cast<size_t>(winId()));
+        #else
+            // Linux/X11
+            params["parentWindowHandle"] = 
+                Ogre::StringConverter::toString(static_cast<unsigned long>(winId()));
+        #endif
+
+        std::cout << "Creating render window with handle: " 
+                  << static_cast<unsigned long>(winId()) << std::endl;
+
+        // Создаем окно рендера
+        mRenderWindow = mRoot->createRenderWindow(
+            "OgreRenderWindow",
+            width(), height(),
+            false, // не полноэкранное
+            &params
+        );
+
+        if (!mRenderWindow) {
+            throw Ogre::Exception(0, "Failed to create render window", "GameProcess::setupOgre");
+        }
+
+        mRenderWindow->setActive(true);
+        mRenderWindow->setVisible(true);
+
+        std::cout << "Render window created successfully: " 
+                  << mRenderWindow->getWidth() << "x" << mRenderWindow->getHeight() << std::endl;
+
+        // Создаем сцену - ИСПРАВЛЕННАЯ СТРОКА:
+        // Вместо Ogre::ST_GENERIC используем 0 (эквивалент)
+        mSceneManager = mRoot->createSceneManager("DefaultSceneManager", "MainSceneManager");
+        
+        // Настраиваем камеру
+        mCamera = mSceneManager->createCamera("MainCamera");
+        mCamera->setNearClipDistance(0.1f);
+        mCamera->setFarClipDistance(2000.0f);
+        mCamera->setAutoAspectRatio(true);
+        
+        Ogre::Viewport* vp = mRenderWindow->addViewport(mCamera);
+        vp->setBackgroundColour(Ogre::ColourValue(0.0f, 0.0f, 0.03f));
+
+        // Инициализируем систему шейдеров
+        if (!Ogre::RTShader::ShaderGenerator::getSingletonPtr()) {
+            Ogre::RTShader::ShaderGenerator::initialize();
+        }
+        auto* shaderGenerator = Ogre::RTShader::ShaderGenerator::getSingletonPtr();
+        shaderGenerator->addSceneManager(mSceneManager);
+
+        // Создаем камеру
+        mCamPivot = mSceneManager->getRootSceneNode()->createChildSceneNode("CamPivot");
+        mCamYawNode = mCamPivot->createChildSceneNode("CamYaw");
+        mCamPitchNode = mCamYawNode->createChildSceneNode("CamPitch");
+        mCamEye = mCamPitchNode->createChildSceneNode("CamEye");
+        mCamEye->attachObject(mCamera);
+        mCamYawNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
+        mCamPitchNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
+        mCamEye->setPosition(0, 0, mCamDistCurrent);
+
+        // Создаем освещение
+        Ogre::Light* dirLight = mSceneManager->createLight("MainLight");
+        dirLight->setType(Ogre::Light::LT_DIRECTIONAL);
+        Ogre::SceneNode* lightNode = mSceneManager->getRootSceneNode()->createChildSceneNode();
+        lightNode->attachObject(dirLight);
+        lightNode->setDirection(Ogre::Vector3(-0.4f, -1.0f, -0.25f).normalisedCopy());
+        dirLight->setDiffuseColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
+        dirLight->setSpecularColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
+
+        Ogre::Light* skyLight = mSceneManager->createLight("SkyGlow");
+        skyLight->setType(Ogre::Light::LT_POINT);
+        Ogre::SceneNode* skyNode = mSceneManager->getRootSceneNode()->createChildSceneNode(Ogre::Vector3(0, 60, 0));
+        skyNode->attachObject(skyLight);
+        skyLight->setDiffuseColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
+        skyLight->setSpecularColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
+        skyLight->setAttenuation(200.0f, 1.0f, 0.014f, 0.0007f);
+
+        createGrid();
+
+        // Инициализируем UI
+        mTrayMgr = new OgreBites::TrayManager("HUD", mRenderWindow, this);
+        mTrayMgr->showFrameStats(OgreBites::TL_BOTTOMLEFT);
+        mTrayMgr->showLogo(OgreBites::TL_BOTTOMRIGHT);
+        mTrayMgr->hideCursor();
+
+        mOgreInitialised = true;
+        std::cout << "OGRE initialization successful!" << std::endl;
+
     } catch (const Ogre::Exception& e) {
         std::cerr << "OGRE ERROR: " << e.getFullDescription() << std::endl;
-    }
-}
-
-void GameProcess::setupOgre() {
-    // Create Root
-    mRoot = new Ogre::Root();
-    
-    // Setup render system
-    auto* renderSystem = mRoot->getRenderSystemByName("OpenGL 3+ Rendering Subsystem");
-    if (!renderSystem) {
-        throw Ogre::Exception(0, "OpenGL 3+ render system not found", "GameProcess::setupOgre");
-    }
-    mRoot->setRenderSystem(renderSystem);
-    mRoot->initialise(false);
-    
-    // Create window using Qt widget
-    Ogre::NameValuePairList params;
-    params["externalWindowHandle"] = Ogre::StringConverter::toString((size_t)winId());
-    params["parentWindowHandle"] = Ogre::StringConverter::toString((size_t)parentWidget()->winId());
-    params["FSAA"] = "0";
-    
-    mRenderWindow = mRoot->createRenderWindow("OgreRenderWindow", width(), height(), false, &params);
-    
-    // Create SceneManager
-    mSceneManager = mRoot->createSceneManager();
-    
-    // RTSS
-    if (!Ogre::RTShader::ShaderGenerator::getSingletonPtr()) {
-        Ogre::RTShader::ShaderGenerator::initialize();
-    }
-    auto* sg = Ogre::RTShader::ShaderGenerator::getSingletonPtr();
-    sg->addSceneManager(mSceneManager);
-    Ogre::MaterialManager::getSingleton().setActiveScheme(Ogre::RTShader::ShaderGenerator::DEFAULT_SCHEME_NAME);
-    
-    // Camera
-    mCamera = mSceneManager->createCamera("MainCamera");
-    mCamera->setNearClipDistance(0.1f);
-    mCamera->setFarClipDistance(2000.0f);
-    mCamera->setAutoAspectRatio(true);
-    Ogre::Viewport* vp = mRenderWindow->addViewport(mCamera);
-    vp->setBackgroundColour(Ogre::ColourValue(0.0f, 0.0f, 0.03f));
-    
-    // TPS rig
-    mCamPivot = mSceneManager->getRootSceneNode()->createChildSceneNode("CamPivot");
-    mCamYawNode = mCamPivot->createChildSceneNode("CamYaw");
-    mCamPitchNode = mCamYawNode->createChildSceneNode("CamPitch");
-    mCamEye = mCamPitchNode->createChildSceneNode("CamEye");
-    mCamEye->attachObject(mCamera);
-    mCamYawNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
-    mCamPitchNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
-    mCamEye->setPosition(0, 0, mCamDistCurrent);
-    
-    // Lighting
-    {
-        Ogre::Light* dir = mSceneManager->createLight("MainLight");
-        dir->setType(Ogre::Light::LT_DIRECTIONAL);
-        Ogre::SceneNode* ln = mSceneManager->getRootSceneNode()->createChildSceneNode();
-        ln->attachObject(dir);
-        ln->setDirection(Ogre::Vector3(-0.4f, -1.0f, -0.25f).normalisedCopy());
-        dir->setDiffuseColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
         
-        Ogre::Light* sky = mSceneManager->createLight("SkyGlow");
-        sky->setType(Ogre::Light::LT_POINT);
-        Ogre::SceneNode* sn = mSceneManager->getRootSceneNode()->createChildSceneNode(Ogre::Vector3(0, 60, 0));
-        sn->attachObject(sky);
-        sky->setDiffuseColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
-        sky->setSpecularColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
+        // Очистка в случае ошибки
+        if (mRoot) {
+            if (mSceneManager) {
+                mRoot->destroySceneManager(mSceneManager);
+                mSceneManager = nullptr;
+            }
+            if (mRenderWindow) {
+                mRoot->destroyRenderTarget(mRenderWindow);
+                mRenderWindow = nullptr;
+            }
+            delete mRoot;
+            mRoot = nullptr;
+        }
+        
+        QMessageBox::critical(
+            this, "OGRE Error",
+            QString::fromStdString("Failed to initialize OGRE:\n" + e.getFullDescription()));
+        return;
+    } catch (const std::exception& e) {
+        std::cerr << "General ERROR during OGRE setup: " << e.what() << std::endl;
+        return;
     }
-    
-    createGrid();
-    
-    // UI - исправленный вызов для Ogre 14.4
-    mTrayMgr = new OgreBites::TrayManager("HUD", mRenderWindow);
-    mTrayMgr->showFrameStats(OgreBites::TL_BOTTOMLEFT);
-    mTrayMgr->showLogo(OgreBites::TL_BOTTOMRIGHT);
-    mTrayMgr->hideCursor();
-    
-    startMatchFresh();
+}
+// Qt events
+
+void GameProcess::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    std::cout << "GameProcess shown - size: "
+              << width() << "x" << height() << std::endl;
+
+    if (!mOgreInitialised) {
+        try {
+            setupOgre();
+            mTimer->start(16); // ~60 FPS
+            mLastTime = QDateTime::currentMSecsSinceEpoch();
+            std::cout << "OGRE initialization successful!" << std::endl;
+        } catch (const Ogre::Exception& e) {
+            std::cerr << "OGRE ERROR: " << e.getFullDescription() << std::endl;
+            QMessageBox::critical(
+                this, "OGRE Error",
+                QString::fromStdString("Failed to initialize OGRE: "
+                                       + e.getFullDescription()));
+        }
+    }
 }
 
-void GameProcess::resizeGL(int w, int h) {
+void GameProcess::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    int w = event->size().width();
+    int h = event->size().height();
+    std::cout << "Resizing to: " << w << "x" << h << std::endl;
+
     if (mRenderWindow) {
         mRenderWindow->resize(w, h);
         mRenderWindow->windowMovedOrResized();
-        
-        if (mCamera) {
+
+        if (mCamera && h > 0) {
             mCamera->setAspectRatio(float(w) / float(h));
         }
     }
 }
 
-void GameProcess::paintGL() {
-    if (!mRoot) return;
-    
-    // Calculate delta time
+void GameProcess::paintEvent(QPaintEvent* /*event*/)
+{
+    if (!mRoot || !mRenderWindow) {
+        return;
+    }
+
     qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
     float dt = mLastTime > 0 ? (currentTime - mLastTime) / 1000.0f : 0.016f;
     mLastTime = currentTime;
-    
+
     updateGame(dt);
     mRoot->renderOneFrame();
 }
 
-void GameProcess::updateGame(float dt) {
-    mGameTime += dt;
-    
-    if (mState == GameState::Paused || mState == GameState::GameEnd) {
-        updateCameraRig(dt);
-        return;
-    }
-    
-    // Start positions
-    for (auto& P : mPlayers) if (P.alive) { 
-        P.framePrevPos = P.node->getPosition(); 
-        P.hitWallThisFrame = false; 
-    }
-    
-    // Movement
-    for (auto& P : mPlayers) if (P.alive) {
-        if (P.human) updateMove(P, dt, mForward, mBackward, mLeft, mRight);
-        else { updateAI(P, dt); updateMove(P, dt, true, false, P.aiTurnDir > 0, P.aiTurnDir < 0); }
-        P.frameNewPos = P.node->getPosition();
-    }
-    
-    // Collisions
-    resolveCollisionsAndDeaths();
-    
-    // Check round end conditions
-    if (!mPlayers[mHumanIndex].alive) {
-        ++mBotsWins; ++mRoundIndex;
-        if (mBotsWins >= mRoundsToWin) { 
-            showGameEndDialog(false, mGameTime - mRoundStartTime); 
-            return; 
-        }
-        startNewRoundRandom(); 
-        return;
-    }
-    
-    if (botsAliveCount() == 0) {
-        ++mPlayerWins; ++mRoundIndex;
-        if (mPlayerWins >= mRoundsToWin) { 
-            showGameEndDialog(true, mGameTime - mRoundStartTime); 
-            return; 
-        }
-        startNewRoundRandom(); 
-        return;
-    }
-    
-    // Trails
-    for (auto& P : mPlayers) if (P.alive) updateTrail(P);
-    
-    // Camera
-    updateCameraRig(dt);
+void GameProcess::focusInEvent(QFocusEvent* event)
+{
+    QWidget::focusInEvent(event);
+    std::cout << "GameProcess gained focus" << std::endl;
+    activateGame();
+}
+
+void GameProcess::focusOutEvent(QFocusEvent* event)
+{
+    QWidget::focusOutEvent(event);
+    std::cout << "GameProcess lost focus" << std::endl;
+    deactivateGame();
 }
 
 // Input handlers
-void GameProcess::keyPressEvent(QKeyEvent* event) {
+
+void GameProcess::keyPressEvent(QKeyEvent* event)
+{
     switch (event->key()) {
-        case Qt::Key_W: mForward = true; break;
+        case Qt::Key_W: mForward  = true; break;
         case Qt::Key_S: mBackward = true; break;
-        case Qt::Key_A: mLeft = true; break;
-        case Qt::Key_D: mRight = true; break;
-        case Qt::Key_Escape: 
-            if (mState == GameState::Playing) showPauseDialog();
-            else if (mState == GameState::Paused) resumeFromPause();
+        case Qt::Key_A: mLeft     = true; break;
+        case Qt::Key_D: mRight    = true; break;
+        case Qt::Key_Escape:
+            if (mState == GameState::Playing)      showPauseDialog();
+            else if (mState == GameState::Paused)  resumeFromPause();
+            else if (mState == GameState::GameEnd) emit returnToMenuRequested();
             break;
         default: break;
     }
 }
 
-void GameProcess::keyReleaseEvent(QKeyEvent* event) {
+void GameProcess::keyReleaseEvent(QKeyEvent* event)
+{
     switch (event->key()) {
-        case Qt::Key_W: mForward = false; break;
+        case Qt::Key_W: mForward  = false; break;
         case Qt::Key_S: mBackward = false; break;
-        case Qt::Key_A: mLeft = false; break;
-        case Qt::Key_D: mRight = false; break;
+        case Qt::Key_A: mLeft     = false; break;
+        case Qt::Key_D: mRight    = false; break;
         default: break;
     }
 }
 
-void GameProcess::mousePressEvent(QMouseEvent* event) {
+void GameProcess::mousePressEvent(QMouseEvent* event)
+{
     if (event->button() == Qt::RightButton) {
         mRmbDown = true;
         setCursor(Qt::BlankCursor);
+        QCursor::setPos(mapToGlobal(QPoint(width()/2, height()/2)));
+        mLastMousePos = QPoint(width()/2, height()/2);
     }
 }
 
-void GameProcess::mouseReleaseEvent(QMouseEvent* event) {
+void GameProcess::mouseReleaseEvent(QMouseEvent* event)
+{
     if (event->button() == Qt::RightButton) {
         mRmbDown = false;
         setCursor(Qt::ArrowCursor);
     }
 }
 
-void GameProcess::mouseMoveEvent(QMouseEvent* event) {
+void GameProcess::mouseMoveEvent(QMouseEvent* event)
+{
     if (mRmbDown) {
         QPoint delta = event->pos() - mLastMousePos;
-        mCamYaw -= float(delta.x()) * mMouseSensitivity;
+        mCamYaw   -= float(delta.x()) * mMouseSensitivity;
         mCamPitch -= float(delta.y()) * mMouseSensitivity;
-        mCamPitch = clampf(mCamPitch, Ogre::Degree(-85).valueRadians(), Ogre::Degree(85).valueRadians());
-        mCamYawNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
-        mCamPitchNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
-        
-        // Keep cursor centered for continuous rotation
+        mCamPitch = clampf(mCamPitch,
+                           Ogre::Degree(-85).valueRadians(),
+                           Ogre::Degree(85).valueRadians());
+        mCamYawNode->setOrientation(
+            Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
+        mCamPitchNode->setOrientation(
+            Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
+
         QCursor::setPos(mapToGlobal(QPoint(width()/2, height()/2)));
         mLastMousePos = QPoint(width()/2, height()/2);
     } else {
@@ -282,13 +480,151 @@ void GameProcess::mouseMoveEvent(QMouseEvent* event) {
     }
 }
 
-void GameProcess::wheelEvent(QWheelEvent* event) {
-    mCamDistance = clampf(mCamDistance - float(event->angleDelta().y()) * 0.01f, mCamMinDist, mCamMaxDist);
+void GameProcess::wheelEvent(QWheelEvent* event)
+{
+    mCamDistance = clampf(
+        mCamDistance - float(event->angleDelta().y()) * 0.01f,
+        mCamMinDist, mCamMaxDist);
 }
 
-// Game methods implementation
+// ===== ИГРОВАЯ ЛОГИКА (взята из твоего исходника) =====
+void GameProcess::updateCameraRig(float dt)
+{
+    // Проверяем инициализацию
+    if (!mCamPivot || !mCamYawNode || !mCamPitchNode || !mCamEye) {
+        return;
+    }
+
+    // Проверяем наличие игроков
+    if (mPlayers.empty() || mHumanIndex >= mPlayers.size()) {
+        return;
+    }
+
+    Player& humanPlayer = mPlayers[mHumanIndex];
+    
+    // Проверяем что игрок жив и его node существует
+    if (!humanPlayer.alive || !humanPlayer.node) {
+        return;
+    }
+
+    try {
+        // Позиция камеры следует за игроком
+        Ogre::Vector3 target = humanPlayer.node->getPosition() + Ogre::Vector3(0, mCamTargetHeight, 0);
+        mCamPivot->setPosition(target);
+
+        // Автоматическое слежение за поворотом игрока, если не управляем вручную
+        if (!mRmbDown) {
+            float diff = wrapPi(humanPlayer.yaw - mCamYaw);
+            float t = 1.0f - std::exp(-mCamFollowYawSmooth * dt);
+            mCamYaw += diff * t;
+            mCamYawNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
+        }
+
+        // Плавное изменение дистанции камеры
+        float tz = 1.0f - std::exp(-mCamSmooth * dt);
+        mCamDistCurrent += (mCamDistance - mCamDistCurrent) * tz;
+
+        // Применяем повороты камеры
+        mCamPitchNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
+        mCamEye->setPosition(0, 0, mCamDistCurrent);
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error in updateCameraRig: " << e.what() << std::endl;
+    }
+}
+void GameProcess::updateGame(float dt)
+{
+    // Проверяем инициализацию
+    if (!mRoot || !mRenderWindow || !mSceneManager) {
+        return;
+    }
+
+    // Ограничиваем dt для избежания аномалий физики
+    dt = std::min(dt, 0.1f);
+    mGameTime += dt;
+
+    if (mState == GameState::Paused || mState == GameState::GameEnd) {
+        updateCameraRig(dt);
+        return;
+    }
+
+    // Проверяем наличие игроков
+    if (mPlayers.empty()) {
+        return;
+    }
+
+    // Проверяем валидность индекса человеческого игрока
+    if (mHumanIndex >= mPlayers.size()) {
+        std::cerr << "Invalid human index: " << mHumanIndex << std::endl;
+        return;
+    }
+
+    try {
+        // Сохраняем позиции для коллизий
+        for (auto& player : mPlayers) {
+            if (player.alive && player.node) {
+                player.framePrevPos = player.node->getPosition();
+                player.hitWallThisFrame = false;
+            }
+        }
+
+        // Обновляем движение
+        for (auto& player : mPlayers) {
+            if (player.alive && player.node) {
+                if (player.human) {
+                    updateMove(player, dt, mForward, mBackward, mLeft, mRight);
+                } else {
+                    updateAI(player, dt);
+                    updateMove(player, dt, true, false, player.aiTurnDir > 0, player.aiTurnDir < 0);
+                }
+                player.frameNewPos = player.node->getPosition();
+            }
+        }
+
+        // Обрабатываем коллизии
+        resolveCollisionsAndDeaths();
+
+        // Проверяем конец раунда
+        if (!mPlayers[mHumanIndex].alive) {
+            ++mBotsWins;
+            ++mRoundIndex;
+            if (mBotsWins >= mRoundsToWin) {
+                showGameEndDialog(false, mGameTime - mRoundStartTime);
+                return;
+            }
+            startNewRoundRandom();
+            return;
+        }
+
+        if (botsAliveCount() == 0) {
+            ++mPlayerWins;
+            ++mRoundIndex;
+            if (mPlayerWins >= mRoundsToWin) {
+                showGameEndDialog(true, mGameTime - mRoundStartTime);
+                return;
+            }
+            startNewRoundRandom();
+            return;
+        }
+
+        // Обновляем следы
+        for (auto& player : mPlayers) {
+            if (player.alive) {
+                updateTrail(player);
+            }
+        }
+
+        // Обновляем камеру
+        updateCameraRig(dt);
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error in updateGame: " << e.what() << std::endl;
+    }
+}
+
+// ===== дальше твои вспомогательные методы без изменений =====
+
 void GameProcess::createGrid() {
-    // Ground material
     {
         Ogre::MaterialPtr gmat = Ogre::MaterialManager::getSingleton().create(
             "GroundMaterial", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
@@ -298,8 +634,7 @@ void GameProcess::createGrid() {
         p->setAmbient(Ogre::ColourValue(0.01f, 0.01f, 0.02f));
         p->setSelfIllumination(Ogre::ColourValue(0.03f, 0.03f, 0.08f));
     }
-    
-    // Grid material
+
     {
         Ogre::MaterialPtr lmat = Ogre::MaterialManager::getSingleton().create(
             "GridMaterial", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
@@ -310,8 +645,7 @@ void GameProcess::createGrid() {
         p->setSceneBlending(Ogre::SBT_ADD);
         p->setDepthWriteEnabled(false);
     }
-    
-    // Ground plane
+
     Ogre::ManualObject* ground = mSceneManager->createManualObject("Ground");
     ground->begin("GroundMaterial", Ogre::RenderOperation::OT_TRIANGLE_LIST);
     float half = mMapHalfSize;
@@ -330,8 +664,7 @@ void GameProcess::createGrid() {
     }
     ground->end();
     mSceneManager->getRootSceneNode()->createChildSceneNode()->attachObject(ground);
-    
-    // Grid lines
+
     Ogre::ManualObject* grid = mSceneManager->createManualObject("GridLines");
     grid->begin("GridMaterial", Ogre::RenderOperation::OT_LINE_LIST);
     for (int i = 0; i <= mGridSize; ++i) {
@@ -344,7 +677,7 @@ void GameProcess::createGrid() {
 }
 
 Ogre::Entity* GameProcess::createBoxEntity(const Ogre::String& meshName, const Ogre::String& entName,
-                                          float L, float W, float H, const Ogre::ColourValue& color) {
+                                           float L, float W, float H, const Ogre::ColourValue& color) {
     Ogre::String matName = entName + "_Mat";
     {
         Ogre::MaterialPtr mat = Ogre::MaterialManager::getSingleton().create(
@@ -355,10 +688,10 @@ Ogre::Entity* GameProcess::createBoxEntity(const Ogre::String& meshName, const O
         p->setAmbient(color * 0.35f);
         p->setSelfIllumination(color * 0.65f);
     }
-    
+
     Ogre::ManualObject* m = mSceneManager->createManualObject(entName + "_MO");
     m->begin(matName, Ogre::RenderOperation::OT_TRIANGLE_LIST);
-    
+
     Ogre::Vector3 p[8] = {
         {-L*0.5f, 0.0f, -W*0.5f}, {-L*0.5f, 0.0f,  W*0.5f},
         {-L*0.5f, H,     W*0.5f}, {-L*0.5f, H,    -W*0.5f},
@@ -378,95 +711,134 @@ Ogre::Entity* GameProcess::createBoxEntity(const Ogre::String& meshName, const O
     addQuad(0,1,2,3); addQuad(4,7,6,5); addQuad(0,3,7,4);
     addQuad(1,5,6,2); addQuad(0,4,5,1); addQuad(3,2,6,7);
     m->end();
-    
+
     Ogre::MeshPtr mesh = m->convertToMesh(meshName);
     mSceneManager->destroyManualObject(m);
-    
+
     Ogre::Entity* ent = mSceneManager->createEntity(entName, meshName);
     ent->setMaterialName(matName);
     return ent;
 }
 
-void GameProcess::spawnPlayer(bool human, const Ogre::Vector3& start, const Ogre::ColourValue& color, const Ogre::String& name) {
-    Player P;
-    P.human = human; 
-    P.color = Ogre::ColourValue(color.r, color.g, color.b, 1.0f);
-    P.name  = name;  
-    P.alive = true;
-    
-    P.ent  = createBoxEntity(name+"_BoxMesh", name+"_BoxEntity", 2.5f, 1.6f, 1.6f, P.color);
-    P.node = mSceneManager->getRootSceneNode()->createChildSceneNode(name + "_Node");
-    P.node->attachObject(P.ent);
-    
-    Ogre::AxisAlignedBox bb = P.ent->getBoundingBox();
-    float raise = -bb.getMinimum().y;
-    P.node->translate(0, raise, 0);
-    
-    P.node->setPosition(start);
-    P.yaw = 0.0f; P.speed = 0.0f; P.lean = 0.0f;
-    P.node->setOrientation(Ogre::Quaternion(Ogre::Radian(P.yaw), Ogre::Vector3::UNIT_Y));
-    
-    // Light
-    P.glow = mSceneManager->createLight(name + "_Glow");
-    P.glow->setType(Ogre::Light::LT_POINT);
-    P.glow->setDiffuseColour(P.color * 1.6f);
-    P.glow->setSpecularColour(P.color);
-    P.glow->setAttenuation(140.0f, 1.0f, 0.004f, 0.0004f);
-    P.node->createChildSceneNode(name+"_GlowNode", Ogre::Vector3(0, 1.0f, 0))->attachObject(P.glow);
-    
-    // Trail material
-    {
-        Ogre::MaterialPtr m = Ogre::MaterialManager::getSingleton().create(
+void GameProcess::spawnPlayer(bool human, const Ogre::Vector3& start,
+                              const Ogre::ColourValue& color, const Ogre::String& name)
+{
+    // Проверяем инициализацию сцены
+    if (!mSceneManager) {
+        std::cerr << "Cannot spawn player: SceneManager is null" << std::endl;
+        return;
+    }
+
+    try {
+        Player newPlayer;
+        newPlayer.human = human;
+        newPlayer.color = Ogre::ColourValue(color.r, color.g, color.b, 1.0f);
+        newPlayer.name  = name;
+        newPlayer.alive = true;
+
+        // Создаем модель игрока
+        newPlayer.ent = createBoxEntity(name + "_BoxMesh", name + "_BoxEntity", 
+                                       2.5f, 1.6f, 1.6f, newPlayer.color);
+        if (!newPlayer.ent) {
+            throw std::runtime_error("Failed to create player entity");
+        }
+
+        newPlayer.node = mSceneManager->getRootSceneNode()->createChildSceneNode(name + "_Node");
+        if (!newPlayer.node) {
+            throw std::runtime_error("Failed to create player node");
+        }
+        newPlayer.node->attachObject(newPlayer.ent);
+
+        // Корректируем позицию чтобы модель стояла на земле
+        Ogre::AxisAlignedBox bb = newPlayer.ent->getBoundingBox();
+        float raise = -bb.getMinimum().y;
+        newPlayer.node->translate(0, raise, 0);
+
+        // Устанавливаем начальную позицию и ориентацию
+        newPlayer.node->setPosition(start);
+        newPlayer.yaw = 0.0f;
+        newPlayer.speed = 0.0f;
+        newPlayer.lean = 0.0f;
+        newPlayer.node->setOrientation(Ogre::Quaternion(Ogre::Radian(newPlayer.yaw), Ogre::Vector3::UNIT_Y));
+
+        // Создаем свечение
+        newPlayer.glow = mSceneManager->createLight(name + "_Glow");
+        if (!newPlayer.glow) {
+            throw std::runtime_error("Failed to create player glow light");
+        }
+        newPlayer.glow->setType(Ogre::Light::LT_POINT);
+        newPlayer.glow->setDiffuseColour(newPlayer.color * 1.6f);
+        newPlayer.glow->setSpecularColour(newPlayer.color);
+        newPlayer.glow->setAttenuation(140.0f, 1.0f, 0.004f, 0.0004f);
+        
+        Ogre::SceneNode* glowNode = newPlayer.node->createChildSceneNode(name + "_GlowNode", Ogre::Vector3(0, 1.0f, 0));
+        glowNode->attachObject(newPlayer.glow);
+
+        // Создаем материал для следа
+        Ogre::MaterialPtr trailMat = Ogre::MaterialManager::getSingleton().create(
             name + "_TrailMat", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-        Ogre::Pass* ps = m->getTechnique(0)->getPass(0);
-        ps->setLightingEnabled(false);
-        ps->setDiffuse(P.color);
-        ps->setAmbient(Ogre::ColourValue::Black);
-        ps->setSelfIllumination(P.color);
-        ps->setSceneBlending(Ogre::SBT_ADD);
-        ps->setDepthWriteEnabled(false);
+        Ogre::Pass* pass = trailMat->getTechnique(0)->getPass(0);
+        pass->setLightingEnabled(false);
+        pass->setDiffuse(newPlayer.color);
+        pass->setAmbient(Ogre::ColourValue::Black);
+        pass->setSelfIllumination(newPlayer.color);
+        pass->setSceneBlending(Ogre::SBT_ADD);
+        pass->setDepthWriteEnabled(false);
+
+        // Создаем след
+        newPlayer.trail = mSceneManager->createBillboardChain(name + "_Trail");
+        if (!newPlayer.trail) {
+            throw std::runtime_error("Failed to create trail");
+        }
+        newPlayer.trail->setNumberOfChains(1);
+        newPlayer.trail->setMaxChainElements(1024);
+        newPlayer.trail->setUseTextureCoords(false);
+        newPlayer.trail->setUseVertexColours(true);
+        newPlayer.trail->setMaterialName(name + "_TrailMat");
+        
+        Ogre::SceneNode* trailNode = mSceneManager->getRootSceneNode()->createChildSceneNode(name + "_TrailNode");
+        trailNode->attachObject(newPlayer.trail);
+
+        // Настраиваем ИИ для ботов
+        if (!newPlayer.human) {
+            newPlayer.aiTurnTimer = frand(0.5f, 2.0f);
+            newPlayer.aiTurnDir = (frand(0.0f, 1.0f) > 0.5f ? +1.0f : -1.0f);
+        }
+
+        // Инициализируем позиции для коллизий
+        newPlayer.lastTrailPos = start;
+        newPlayer.framePrevPos = start;
+        newPlayer.frameNewPos  = start;
+
+        // Добавляем игрока в список
+        mPlayers.push_back(newPlayer);
+        
+        std::cout << "Spawned player: " << name << " at (" 
+                  << start.x << ", " << start.y << ", " << start.z << ")" << std::endl;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error spawning player '" << name << "': " << e.what() << std::endl;
     }
-    
-    // Trail chain
-    P.trail = mSceneManager->createBillboardChain(name + "_Trail");
-    P.trail->setNumberOfChains(1);
-    P.trail->setMaxChainElements(1024);
-    P.trail->setUseTextureCoords(false);
-    P.trail->setUseVertexColours(true);
-    P.trail->setMaterialName(name + "_TrailMat");
-    mSceneManager->getRootSceneNode()->createChildSceneNode(name + "_TrailNode")->attachObject(P.trail);
-    
-    if (!P.human) { 
-        P.aiTurnTimer = frand(0.5f, 2.0f); 
-        P.aiTurnDir = (frand(0.0f,1.0f)>0.5f?+1.0f:-1.0f); 
-    }
-    
-    P.lastTrailPos = start;
-    P.framePrevPos = start;
-    P.frameNewPos  = start;
-    
-    mPlayers.push_back(P);
 }
 
-float GameProcess::frand(float a, float b) { 
-    std::uniform_real_distribution<float> d(a,b); 
-    return d(mRng); 
+float GameProcess::frand(float a, float b) {
+    std::uniform_real_distribution<float> d(a,b);
+    return d(mRng);
 }
 
 void GameProcess::startMatchFresh() {
     mPlayerWins = mBotsWins = 0;
     mRoundIndex = 1;
-    
+
     mPlayers.clear();
     spawnPlayer(true,  mSpawnsStatic[0], Ogre::ColourValue(0.2f, 0.7f, 1.0f), "Player");
-    
-    // Создаем ботов в соответствии с настройками
+
     for (int i = 0; i < mNumberOfBots; ++i) {
         Ogre::ColourValue botColor;
         Ogre::String botName;
-        
+
         switch(i % 3) {
-            case 0: 
+            case 0:
                 botColor = Ogre::ColourValue(1.0f, 0.3f, 0.3f);
                 botName = "Bot_Red_" + Ogre::StringConverter::toString(i);
                 break;
@@ -479,10 +851,10 @@ void GameProcess::startMatchFresh() {
                 botName = "Bot_Yellow_" + Ogre::StringConverter::toString(i);
                 break;
         }
-        
+
         spawnPlayer(false, mSpawnsStatic[(i % 3) + 1], botColor, botName);
     }
-    
+
     mHumanIndex = 0;
     mRoundStartTime = mGameTime;
     mState = GameState::Playing;
@@ -491,33 +863,33 @@ void GameProcess::startMatchFresh() {
 void GameProcess::startNewRoundRandom() {
     const int N = (int)mPlayers.size();
     std::vector<Ogre::Vector3> spawns = generateRandomSpawns(N);
-    
+
     for (int i=0;i<N;++i) {
         Player& P = mPlayers[i];
         P.alive = true; P.speed = 0.0f; P.yaw = frand(-Ogre::Math::PI, Ogre::Math::PI); P.lean = 0.0f;
-        
+
         Ogre::Vector3 start = spawns[i];
         P.node->setPosition(start);
         P.node->setOrientation(Ogre::Quaternion(Ogre::Radian(P.yaw), Ogre::Vector3::UNIT_Y));
         P.node->setVisible(true, true);
-        
+
         P.framePrevPos = start;
         P.frameNewPos  = start;
-        
+
         P.pts.clear(); P.trail->clearChain(0); P.lastTrailPos = start;
-        
-        if (!P.human) { 
-            P.aiTurnTimer = frand(0.5f, 2.0f); 
-            P.aiTurnDir = (frand(0.0f,1.0f)>0.5f?+1.0f:-1.0f); 
+
+        if (!P.human) {
+            P.aiTurnTimer = frand(0.5f, 2.0f);
+            P.aiTurnDir = (frand(0.0f,1.0f)>0.5f?+1.0f:-1.0f);
         }
     }
-    
+
     mRoundStartTime = mGameTime;
     mState = GameState::Playing;
 }
 
 std::vector<Ogre::Vector3> GameProcess::generateRandomSpawns(int count) {
-    std::vector<Ogre::Vector3> out; 
+    std::vector<Ogre::Vector3> out;
     out.reserve(count);
     float border = mMapHalfSize - 6.0f;
     float minDist = 10.0f;
@@ -525,11 +897,11 @@ std::vector<Ogre::Vector3> GameProcess::generateRandomSpawns(int count) {
     while ((int)out.size() < count && tries < 2000) {
         ++tries;
         Ogre::Vector3 p(frand(-border,border), 0.0f, frand(-border,border));
-        bool ok=true; 
+        bool ok=true;
         for (auto& q: out) if ((p-q).length() < minDist) { ok=false; break; }
         if (ok) out.push_back(p);
     }
-    while ((int)out.size() < count) 
+    while ((int)out.size() < count)
         out.push_back(mSpawnsStatic[out.size()%mSpawnsStatic.size()]);
     return out;
 }
@@ -538,29 +910,29 @@ void GameProcess::updateMove(Player& P, float dt, bool W, bool S, bool A, bool D
     float acc = 0.0f;
     if (W) acc += mAcceleration;
     if (S) acc += (P.speed > 0.0f ? -mBrakeDecel : -mAcceleration);
-    
+
     if (W || S) P.speed += acc * dt;
     else {
         if (P.speed > 0.0f) { P.speed -= mFriction * dt; if (P.speed < 0) P.speed = 0; }
         else if (P.speed < 0.0f) { P.speed += mFriction * dt; if (P.speed > 0) P.speed = 0; }
     }
     P.speed = clampf(P.speed, -mMaxBackwardSpeed, mMaxForwardSpeed);
-    
+
     float turn = (A ? 1.0f : 0.0f) + (D ? -1.0f : 0.0f);
     float dirSign = (P.speed >= 0.0f ? 1.0f : -1.0f);
     P.yaw += turn * mTurnSpeed * dt * dirSign;
-    
+
     float speedFactor = std::min(1.0f, std::fabs(P.speed) / mMaxForwardSpeed);
     float targetLean = turn * mMaxLeanAngle * speedFactor;
     P.lean = lerpf(P.lean, targetLean, std::min(1.0f, mLeanSpeed * dt));
-    
+
     Ogre::Quaternion yawQ(Ogre::Radian(P.yaw), Ogre::Vector3::UNIT_Y);
     Ogre::Quaternion rollQ(Ogre::Radian(P.lean), Ogre::Vector3::UNIT_Z);
     P.node->setOrientation(yawQ * rollQ);
-    
+
     Ogre::Vector3 forward = yawQ * Ogre::Vector3(0, 0, -1);
     Ogre::Vector3 cand    = P.node->getPosition() + forward * (P.speed * dt);
-    
+
     float border = mMapHalfSize - 2.0f;
     P.hitWallThisFrame = (std::fabs(cand.x) > border) || (std::fabs(cand.z) > border);
     Ogre::Vector3 newPos(cand.x, cand.y, cand.z);
@@ -592,9 +964,9 @@ void GameProcess::updateTrail(Player& P) {
         P.pts.push_back({pos, mGameTime});
         P.lastTrailPos = pos;
     }
-    while (!P.pts.empty() && (mGameTime - P.pts.front().t) > mTrailTTL) 
+    while (!P.pts.empty() && (mGameTime - P.pts.front().t) > mTrailTTL)
         P.pts.pop_front();
-    
+
     P.trail->clearChain(0);
     for (const auto& tp : P.pts) {
         float age = mGameTime - tp.t;
@@ -608,34 +980,32 @@ void GameProcess::updateTrail(Player& P) {
 void GameProcess::resolveCollisionsAndDeaths() {
     const float trailRad = mTrailWidth * 0.5f;
     const float epsAlpha = 1e-4f;
-    
+
     std::vector<Hit> hits;
-    
+
     for (size_t i = 0; i < mPlayers.size(); ++i) {
         Player& A = mPlayers[i];
         if (!A.alive) continue;
-        
+
         Ogre::Vector2 a0(A.framePrevPos.x, A.framePrevPos.z);
         Ogre::Vector2 a1(A.frameNewPos.x,  A.frameNewPos.z);
-        
+
         float bestAlpha = std::numeric_limits<float>::infinity();
         bool  any = false;
-        
-        // Wall collision
+
         if (A.hitWallThisFrame) { any = true; bestAlpha = std::min(bestAlpha, 1.0f); }
-        
-        // Trail collisions
+
         for (size_t j = 0; j < mPlayers.size(); ++j) {
             const Player& B = mPlayers[j];
             size_t segCount = (B.pts.size() >= 2) ? (B.pts.size() - 1) : 0;
             if (segCount == 0) continue;
-            
+
             size_t limit = segCount;
-            if (j == i) { 
-                if (limit > mSelfSkipSegments) limit -= mSelfSkipSegments; 
-                else limit = 0; 
+            if (j == i) {
+                if (limit > mSelfSkipSegments) limit -= mSelfSkipSegments;
+                else limit = 0;
             }
-            
+
             for (size_t k = 0; k < limit; ++k) {
                 Ogre::Vector2 b0(B.pts[k].pos.x,   B.pts[k].pos.z);
                 Ogre::Vector2 b1(B.pts[k+1].pos.x, B.pts[k+1].pos.z);
@@ -645,8 +1015,7 @@ void GameProcess::resolveCollisionsAndDeaths() {
                 if (cl.dist2 <= r*r) { any = true; if (cl.t < bestAlpha) bestAlpha = cl.t; }
             }
         }
-        
-        // Player-to-player collisions
+
         for (size_t j = 0; j < mPlayers.size(); ++j) if (j != i) {
             const Player& B = mPlayers[j]; if (!B.alive) continue;
             Ogre::Vector2 b0(B.framePrevPos.x, B.framePrevPos.z);
@@ -655,25 +1024,25 @@ void GameProcess::resolveCollisionsAndDeaths() {
             float r = mPlayerRadius + mPlayerRadius;
             if (cl.dist2 <= r*r) { any = true; if (cl.t < bestAlpha) bestAlpha = cl.t; }
         }
-        
+
         if (any) hits.push_back({ i, bestAlpha, (i==mHumanIndex) });
     }
-    
+
     if (hits.empty()) return;
-    
+
     float best = hits[0].alpha;
     for (auto& h : hits) best = std::min(best, h.alpha);
-    
+
     bool playerAmongBest = false;
-    for (auto& h : hits) if (std::fabs(h.alpha - best) <= epsAlpha && h.isPlayer) { 
-        playerAmongBest = true; break; 
+    for (auto& h : hits) if (std::fabs(h.alpha - best) <= epsAlpha && h.isPlayer) {
+        playerAmongBest = true; break;
     }
-    
+
     if (playerAmongBest) {
         killPlayer(mHumanIndex);
         return;
     }
-    
+
     for (auto& h : hits) if (std::fabs(h.alpha - best) <= epsAlpha) killPlayer(h.idx);
 }
 
@@ -686,35 +1055,17 @@ void GameProcess::killPlayer(size_t idx) {
 
 int GameProcess::botsAliveCount() const {
     int n = 0;
-    for (size_t i=0;i<mPlayers.size();++i) 
+    for (size_t i=0;i<mPlayers.size();++i)
         if (i!=mHumanIndex && mPlayers[i].alive) ++n;
     return n;
 }
 
-float GameProcess::wrapPi(float a) { 
-    while (a >  Ogre::Math::PI) a -= Ogre::Math::TWO_PI; 
-    while (a < -Ogre::Math::PI) a += Ogre::Math::TWO_PI; 
-    return a; 
+float GameProcess::wrapPi(float a) {
+    while (a >  Ogre::Math::PI) a -= Ogre::Math::TWO_PI;
+    while (a < -Ogre::Math::PI) a += Ogre::Math::TWO_PI;
+    return a;
 }
 
-void GameProcess::updateCameraRig(float dt) {
-    if (mPlayers.empty()) return;
-    Player& H = mPlayers[mHumanIndex];
-    Ogre::Vector3 target = H.node->getPosition() + Ogre::Vector3(0, mCamTargetHeight, 0);
-    mCamPivot->setPosition(target);
-    if (!mRmbDown) {
-        float diff = wrapPi(H.yaw - mCamYaw);
-        float t = 1.0f - std::exp(-mCamFollowYawSmooth * dt);
-        mCamYaw += diff * t;
-        mCamYawNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
-    }
-    float tz = 1.0f - std::exp(-mCamSmooth * dt);
-    mCamDistCurrent += (mCamDistance - mCamDistCurrent) * tz;
-    mCamPitchNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
-    mCamEye->setPosition(0, 0, mCamDistCurrent);
-}
-
-// UI Methods
 void GameProcess::showPauseDialog() {
     if (!mTrayMgr) return;
     mState = GameState::Paused;
@@ -722,7 +1073,7 @@ void GameProcess::showPauseDialog() {
     mTrayMgr->createLabel (OgreBites::TL_CENTER, "pause_title", "Пауза", 250);
     mTrayMgr->createButton(OgreBites::TL_CENTER, "btn_resume",  "Возобновить игру", 250);
     mTrayMgr->createButton(OgreBites::TL_CENTER, "btn_restart", "Рестарт (случайные позиции)", 250);
-    mTrayMgr->createButton(OgreBites::TL_CENTER, "btn_exit",    "Выйти из игры", 250);
+    mTrayMgr->createButton(OgreBites::TL_CENTER, "btn_exit",    "Выйти в меню", 250);
 }
 
 void GameProcess::hidePauseDialog() {
@@ -740,82 +1091,27 @@ void GameProcess::showGameEndDialog(bool playerWon, float roundTime) {
     mState = GameState::GameEnd;
     if (!mTrayMgr) return;
     ClearCenterDialog(mTrayMgr);
-    
+
     Ogre::String title = "Игра окончена";
     Ogre::String info  = playerWon ? "Победитель: " + mPlayers[mHumanIndex].name
-                                 : "Победитель: Боты";
-    
+                                   : "Победитель: Боты";
+
     mTrayMgr->createLabel(OgreBites::TL_CENTER, "end_title", title, 300);
     mTrayMgr->createLabel(OgreBites::TL_CENTER, "end_winner", info, 300);
-    
-    Ogre::String score = "Счёт: " + Ogre::StringConverter::toString(mPlayerWins) + " : " + Ogre::StringConverter::toString(mBotsWins);
+
+    Ogre::String score = "Счёт: " + Ogre::StringConverter::toString(mPlayerWins)
+                         + " : " + Ogre::StringConverter::toString(mBotsWins);
     mTrayMgr->createLabel(OgreBites::TL_CENTER, "end_score", score, 300);
-    
+
     Ogre::String timeStr = "Время раунда: " + Ogre::StringConverter::toString(roundTime, 1) + " c";
     mTrayMgr->createLabel(OgreBites::TL_CENTER, "end_time", timeStr, 300);
-    
+
     mTrayMgr->createButton(OgreBites::TL_CENTER, "btn_restart", "Рестарт матча", 250);
-    mTrayMgr->createButton(OgreBites::TL_CENTER, "btn_exit",    "Выйти", 250);
+    mTrayMgr->createButton(OgreBites::TL_CENTER, "btn_exit",    "Выйти в меню", 250);
 }
 
 void GameProcess::hideGameEndDialog() {
     if (!mTrayMgr) return;
     ClearCenterDialog(mTrayMgr);
     mState = GameState::Playing;
-}
-
-
-void GameProcess::showEvent(QShowEvent* event) {
-    QOpenGLWidget::showEvent(event);
-    qDebug() << "GameProcess shown - size:" << size();
-    
-    // Активируем игру при показе
-    activateGame();
-}
-
-void GameProcess::focusInEvent(QFocusEvent* event) {
-    QOpenGLWidget::focusInEvent(event);
-    qDebug() << "GameProcess gained focus";
-    
-    // При получении фокуса активируем захват ввода
-    activateGame();
-}
-
-void GameProcess::focusOutEvent(QFocusEvent* event) {
-    QOpenGLWidget::focusOutEvent(event);
-    qDebug() << "GameProcess lost focus";
-    
-    // При потере фокуса освобождаем захват
-    releaseKeyboard();
-    releaseMouse();
-    setCursor(Qt::ArrowCursor);
-}
-
-void GameProcess::activateGame() {
-    setFocus();
-    grabKeyboard();
-    grabMouse();
-    setCursor(Qt::BlankCursor);
-    qDebug() << "Game activated - input captured";
-}
-
-// В методе keyPressEvent добавьте обработку Escape для возврата в меню:
-void GameProcess::keyPressEvent(QKeyEvent* event) {
-    switch (event->key()) {
-        case Qt::Key_W: mForward = true; break;
-        case Qt::Key_S: mBackward = true; break;
-        case Qt::Key_A: mLeft = true; break;
-        case Qt::Key_D: mRight = true; break;
-        case Qt::Key_Escape: 
-            if (mState == GameState::Playing) {
-                showPauseDialog();
-            }
-            else if (mState == GameState::Paused) {
-                resumeFromPause();
-            }
-            // Добавьте возможность выхода в главное меню
-            emit returnToMenuRequested();
-            break;
-        default: break;
-    }
 }

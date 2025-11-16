@@ -2,17 +2,22 @@
 #define GAMEPROCESS_H
 
 #include <Ogre.h>
-#include <OgreApplicationContext.h>
-#include <OgreInput.h>
 #include <OgreRTShaderSystem.h>
 #include <OgreTrays.h>
-#include <QOpenGLWidget>
-#include <QOpenGLFunctions>
+
+#include <QWidget>
+#include <QTimer>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QWheelEvent>
-#include <QTimer>
+#include <QPaintEvent>
+#include <QPaintEngine>
+#include <QFocusEvent>
+#include <QShowEvent>
+#include <QResizeEvent>
 #include <QMessageBox>
+#include <QPoint>
+
 #include <deque>
 #include <vector>
 #include <random>
@@ -36,11 +41,23 @@ static Closest2D closestSegSeg2D(const Vector2& p0, const Vector2& p1, const Vec
     float d = u.dotProduct(w), e = v.dotProduct(w), D = a*c - b*b;
     float sn, sd = D, tn, td = D;
     if (D < EPS) { sn = 0.0f; sd = 1.0f; tn = e; td = c; }
-    else { sn = (b*e - c*d); tn = (a*e - b*d);
+    else {
+        sn = (b*e - c*d);
+        tn = (a*e - b*d);
         if (sn < 0.0f) { sn = 0.0f; tn = e; td = c; }
-        else if (sn > sd) { sn = sd; tn = e + b; td = c; } }
-    if (tn < 0.0f) { tn = 0.0f; if (-d < 0.0f) sn = 0.0f; else if (-d > a) sn = sd; else { sn = -d; sd = a; } }
-    else if (tn > td) { tn = td; if ((-d + b) < 0.0f) sn = 0.0f; else if ((-d + b) > a) sn = sd; else { sn = (-d + b); sd = a; } }
+        else if (sn > sd) { sn = sd; tn = e + b; td = c; }
+    }
+    if (tn < 0.0f) {
+        tn = 0.0f;
+        if (-d < 0.0f) sn = 0.0f;
+        else if (-d > a) sn = sd;
+        else { sn = -d; sd = a; }
+    } else if (tn > td) {
+        tn = td;
+        if ((-d + b) < 0.0f) sn = 0.0f;
+        else if ((-d + b) > a) sn = sd;
+        else { sn = (-d + b); sd = a; }
+    }
     float sc = (std::fabs(sn) < EPS ? 0.0f : sn / sd);
     float tc = (std::fabs(tn) < EPS ? 0.0f : tn / td);
     Vector2 dP = w + (u * sc) - (v * tc);
@@ -78,122 +95,151 @@ struct Player {
 
 enum class GameState { Playing, Paused, RoundEnd, GameEnd };
 
-class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions, public TrayListener {
+class GameProcess : public QWidget, public TrayListener {
     Q_OBJECT
 
 public:
     explicit GameProcess(QWidget* parent = nullptr);
-    ~GameProcess();
+    ~GameProcess() override;
 
-    // TrayListener methods
+    // TrayListener
     void buttonHit(Button* b) override;
-    
+
     void setGameSettings(int roundsToWin, int numberOfBots) {
         mRoundsToWin = roundsToWin;
         mNumberOfBots = numberOfBots;
-        std::cout << "Game settings: rounds=" << mRoundsToWin << ", bots=" << mNumberOfBots << std::endl;
-        
-        // Если OGRE уже инициализирован, перезапускаем игру
+        std::cout << "Game settings: rounds=" << mRoundsToWin
+                  << ", bots=" << mNumberOfBots << std::endl;
+
         if (mRoot) {
             startMatchFresh();
         }
     }
 
-    // Метод для принудительной активации в полноэкранном режиме
     void activateGame() {
+        std::cout << "Activating game..." << std::endl;
         setFocus();
         grabKeyboard();
         grabMouse();
         setCursor(Qt::BlankCursor);
+
+        QCursor::setPos(mapToGlobal(QPoint(width()/2, height()/2)));
+        mLastMousePos = QPoint(width()/2, height()/2);
+
+        std::cout << "Game activated - input captured" << std::endl;
+    }
+
+    void deactivateGame() {
+        releaseKeyboard();
+        releaseMouse();
+        setCursor(Qt::ArrowCursor);
+        std::cout << "Game deactivated" << std::endl;
     }
 
 signals:
     void returnToMenuRequested();
 
 protected:
-    void initializeGL() override;
-    void resizeGL(int w, int h) override;
-    void paintGL() override;
+    QPaintEngine* paintEngine() const override;
+    void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    void focusInEvent(QFocusEvent* event) override;
+    void focusOutEvent(QFocusEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
     void keyReleaseEvent(QKeyEvent* event) override;
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
-    void showEvent(QShowEvent* event) override;
-    void focusInEvent(QFocusEvent* event) override;
-    void focusOutEvent(QFocusEvent* event) override;
 
 private:
-    // Ogre objects
-    Ogre::Root* mRoot = nullptr;
+    // Ogre
+    Ogre::Root*         mRoot         = nullptr;
     Ogre::SceneManager* mSceneManager = nullptr;
     Ogre::RenderWindow* mRenderWindow = nullptr;
-    Ogre::Camera* mCamera = nullptr;
+    Ogre::Camera*       mCamera       = nullptr;
 
     // TPS rig
-    SceneNode* mCamPivot = nullptr;
-    SceneNode* mCamYawNode = nullptr;
+    SceneNode* mCamPivot     = nullptr;
+    SceneNode* mCamYawNode   = nullptr;
     SceneNode* mCamPitchNode = nullptr;
-    SceneNode* mCamEye = nullptr;
-    float mCamYaw = 0.0f, mCamPitch = -0.35f;
+    SceneNode* mCamEye       = nullptr;
+    float mCamYaw   = 0.0f;
+    float mCamPitch = -0.35f;
     float mCamTargetHeight = 2.0f;
-    float mCamDistance = 6.0f, mCamDistCurrent = 6.0f;
-    float mCamMinDist = 2.0f, mCamMaxDist = 40.0f;
-    float mCamSmooth = 12.0f, mCamFollowYawSmooth = 8.0f;
-    bool  mRmbDown = false;
+    float mCamDistance     = 6.0f;
+    float mCamDistCurrent  = 6.0f;
+    float mCamMinDist      = 2.0f;
+    float mCamMaxDist      = 40.0f;
+    float mCamSmooth       = 12.0f;
+    float mCamFollowYawSmooth = 8.0f;
+    bool  mRmbDown         = false;
     float mMouseSensitivity = 0.002f;
     QPoint mLastMousePos;
 
     // Grid
-    int   mGridSize = 80;
-    float mCellSize = 2.0f;
-    float mMapHalfSize = (80*2.0f)*0.5f;
+    int   mGridSize    = 80;
+    float mCellSize    = 2.0f;
+    float mMapHalfSize = (80 * 2.0f) * 0.5f;
 
     // Input
-    bool mForward = false, mBackward = false, mLeft = false, mRight = false;
+    bool mForward  = false;
+    bool mBackward = false;
+    bool mLeft     = false;
+    bool mRight    = false;
 
     // Movement
-    float mMaxForwardSpeed = 40.0f, mMaxBackwardSpeed = 20.0f;
-    float mAcceleration = 45.0f, mBrakeDecel = 70.0f, mFriction = 25.0f, mTurnSpeed = 2.8f;
-    float mMaxLeanAngle = Ogre::Degree(35.0f).valueRadians(), mLeanSpeed = 6.0f;
+    float mMaxForwardSpeed  = 40.0f;
+    float mMaxBackwardSpeed = 20.0f;
+    float mAcceleration     = 45.0f;
+    float mBrakeDecel       = 70.0f;
+    float mFriction         = 25.0f;
+    float mTurnSpeed        = 2.8f;
+    float mMaxLeanAngle     = Ogre::Degree(35.0f).valueRadians();
+    float mLeanSpeed        = 6.0f;
 
     // Trail
-    float mTrailTTL = 5.0f, mTrailMinSegDist = 0.5f, mTrailWidth = 0.7f;
+    float mTrailTTL        = 5.0f;
+    float mTrailMinSegDist = 0.5f;
+    float mTrailWidth      = 0.7f;
 
     // Collisions
-    float  mPlayerRadius = 0.6f;
+    float  mPlayerRadius     = 0.6f;
     size_t mSelfSkipSegments = 2;
-    float  mSelfTouchEps = 1e-3f;
+    float  mSelfTouchEps     = 1e-3f;
 
     // Players
-    std::vector<Player> mPlayers;
-    size_t mHumanIndex = 0;
+    std::vector<Player>  mPlayers;
+    size_t               mHumanIndex = 0;
     std::vector<Vector3> mSpawnsStatic;
-    std::mt19937 mRng{ std::random_device{}() };
+    std::mt19937         mRng{ std::random_device{}() };
 
     // Game state
-    GameState mState = GameState::Playing;
-    int  mRoundsToWin = 3;
-    int  mNumberOfBots = 3;
-    int  mPlayerWins = 0, mBotsWins = 0;
-    int  mRoundIndex = 1;
-    float mRoundStartTime = 0.0f;
+    GameState mState       = GameState::Playing;
+    int  mRoundsToWin      = 3;
+    int  mNumberOfBots     = 3;
+    int  mPlayerWins       = 0;
+    int  mBotsWins         = 0;
+    int  mRoundIndex       = 1;
+    float mRoundStartTime  = 0.0f;
 
     // Time
-    float mGameTime = 0.0f;
-    QTimer* mTimer = nullptr;
-    qint64 mLastTime = 0;
+    float   mGameTime = 0.0f;
+    QTimer* mTimer    = nullptr;
+    qint64  mLastTime = 0;
 
     // UI
     OgreBites::TrayManager* mTrayMgr = nullptr;
+    bool mOgreInitialised = false;
 
     // Methods
     void setupOgre();
+    void updateGame(float dt);
     void createGrid();
     Entity* createBoxEntity(const String& meshName, const String& entName,
-                           float L=2.5f, float W=1.6f, float H=1.6f,
-                           const ColourValue& color=ColourValue(0.8f,0.8f,1.0f));
+                            float L = 2.5f, float W = 1.6f, float H = 1.6f,
+                            const ColourValue& color = ColourValue(0.8f,0.8f,1.0f));
     void spawnPlayer(bool human, const Vector3& start, const ColourValue& color, const String& name);
     float frand(float a, float b);
     void startMatchFresh();
@@ -205,17 +251,48 @@ private:
     void resolveCollisionsAndDeaths();
     struct Hit { size_t idx; float alpha; bool isPlayer; };
     void killPlayer(size_t idx);
-    int botsAliveCount() const;
+    int  botsAliveCount() const;
     static float wrapPi(float a);
     void updateCameraRig(float dt);
-    
     void showPauseDialog();
     void hidePauseDialog();
     void resumeFromPause();
     void showGameEndDialog(bool playerWon, float roundTime);
     void hideGameEndDialog();
-    
-    void updateGame(float dt);
+private:
+    void setupCameraRig() {
+        mCamPivot = mSceneManager->getRootSceneNode()->createChildSceneNode("CamPivot");
+        mCamYawNode = mCamPivot->createChildSceneNode("CamYaw");
+        mCamPitchNode = mCamYawNode->createChildSceneNode("CamPitch");
+        mCamEye = mCamPitchNode->createChildSceneNode("CamEye");
+        
+        mCamEye->attachObject(mCamera);
+        mCamYawNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
+        mCamPitchNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
+        mCamEye->setPosition(0, 0, mCamDistCurrent);
+    }
+
+    void setupLighting() {
+        // Основной направленный свет
+        Ogre::Light* dirLight = mSceneManager->createLight("MainLight");
+        dirLight->setType(Ogre::Light::LT_DIRECTIONAL);
+        Ogre::SceneNode* lightNode = mSceneManager->getRootSceneNode()->createChildSceneNode();
+        lightNode->attachObject(dirLight);
+        lightNode->setDirection(Ogre::Vector3(-0.4f, -1.0f, -0.25f).normalisedCopy());
+        dirLight->setDiffuseColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
+        dirLight->setSpecularColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
+
+        // Дополнительное окружающее освещение
+        Ogre::Light* skyLight = mSceneManager->createLight("SkyGlow");
+        skyLight->setType(Ogre::Light::LT_POINT);
+        Ogre::SceneNode* skyNode = mSceneManager->getRootSceneNode()->createChildSceneNode(Ogre::Vector3(0, 60, 0));
+        skyNode->attachObject(skyLight);
+        skyLight->setDiffuseColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
+        skyLight->setSpecularColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
+        skyLight->setAttenuation(200.0f, 1.0f, 0.014f, 0.0007f);
+    }
 };
 
 #endif // GAMEPROCESS_H
+
+

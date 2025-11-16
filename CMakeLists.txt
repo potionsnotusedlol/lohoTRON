@@ -80,7 +80,7 @@ elseif(APPLE)
 elseif(UNIX AND NOT APPLE)
     # Linux/Ubuntu specific settings
     find_package(X11 REQUIRED)
-    target_link_libraries(lohoTRON PRIVATE X11)
+    target_link_libraries(lohoTRON PRIVATE X11 Xxf86vm)
     
     # Additional libraries that might be needed on Ubuntu
     find_library(GL_LIBRARY GL)
