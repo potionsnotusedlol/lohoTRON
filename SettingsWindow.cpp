@@ -205,6 +205,7 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     fade_in_animation->setStartValue(0.0);
     fade_in_animation->setEndValue(1.0);
     fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
+    }
 }
 
 // closing fade out animation handler

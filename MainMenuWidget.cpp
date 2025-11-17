@@ -1,51 +1,43 @@
 #include "MainMenuWidget.h"
 #include "ui_MainMenuWidget.h"
+
 #include <QGraphicsDropShadowEffect>
+#include <QResizeEvent>
+#include <QPalette>
+#include <QPixmap>
+
 #include "SettingsWindow.h"
 #include "GameStartWindow.h"
 #include "CreatorsWindow.h"
 #include "QuitGameWindow.h"
 
-MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::MainMenuWidget) {
+MainMenuWidget::MainMenuWidget(QWidget* parent)
+    : QWidget(parent)
+    , ui(new Ui::MainMenuWidget)
+{
     ui->setupUi(this);
 
-    // applying functions to buttons
-    connect(ui->start_button, &QPushButton::clicked, this,
-    [this]() {
-        GameStartWindow *game_dlg = new GameStartWindow(this);
-        
-        connect(game_dlg, &GameStartWindow::gameStarted, this, 
-            [this](int rounds, int bots) {
-                emit startGameRequested(rounds, bots);
-            });
-        
-        game_dlg->exec();
-        delete game_dlg;
-    }
-);
+    connect(ui->start_button, &QPushButton::clicked,
+            this, &MainMenuWidget::onStartButtonClicked);
+
     connect(ui->settings_button, &QPushButton::clicked, this,
-        [this]() {
-            SettingsWindow settings_dlg(this);
+            [this]() {
+                SettingsWindow settings_dlg(this);
+                settings_dlg.exec();
+            });
 
-            settings_dlg.exec();
-        }
-    );
     connect(ui->creators_info_button, &QPushButton::clicked, this,
-        [this]() {
-            CreatorsWindow creators_dlg(this);
+            [this]() {
+                CreatorsWindow creators_dlg(this);
+                creators_dlg.exec();
+            });
 
-            creators_dlg.exec();
-        }
-    );
     connect(ui->quit_button, &QPushButton::clicked, this,
-        [this]() {
-            QuitGameWindow quit_dlg(this);
+            [this]() {
+                QuitGameWindow quit_dlg(this);
+                quit_dlg.exec();
+            });
 
-            quit_dlg.exec();
-        }
-    );
-
-    // creating the blue glowing effect (same for each button, different for logo_label)
     auto glow_logo_label = new QGraphicsDropShadowEffect(ui->logo_label);
     glow_logo_label->setBlurRadius(20);
     glow_logo_label->setColor(qRgb(0, 191, 255));
@@ -71,19 +63,19 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
     glow_quit_game_menubutton->setColor(qRgb(0, 191, 255));
     glow_quit_game_menubutton->setOffset(0);
 
-    // applying the effect for each button and label
     ui->logo_label->setGraphicsEffect(glow_logo_label);
     ui->start_button->setGraphicsEffect(glow_start_menubutton);
     ui->settings_button->setGraphicsEffect(glow_settings_menubutton);
     ui->creators_info_button->setGraphicsEffect(glow_creators_info_menubutton);
     ui->quit_button->setGraphicsEffect(glow_quit_game_menubutton);
-    // setting styles for all the visible elements of the main menu (including ignoring the background image setting)
+
     ui->logo_label->setStyleSheet(
         "background: transparent;"
         "font-family: \"Bolgarus Beta\";"
         "font-size: 200pt;"
         "color: rgb(0, 191, 255);"
     );
+
     ui->start_button->setStyleSheet(
         "QPushButton {"
             "background: transparent;"
@@ -91,7 +83,6 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             "font-size: 96pt;"
             "color: rgb(255, 255, 255);"
         "}"
-
         "QPushButton:hover {"
             "background: transparent;"
             "font-family: \"FREE FAT FONT\";"
@@ -99,6 +90,7 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             "color: rgb(0, 191, 255);"
         "}"
     );
+
     ui->settings_button->setStyleSheet(
         "QPushButton {"
             "background: transparent;"
@@ -106,7 +98,6 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             "font-size: 96pt;"
             "color: rgb(255, 255, 255);"
         "}"
-
         "QPushButton:hover {"
             "background: transparent;"
             "font-family: \"FREE FAT FONT\";"
@@ -114,6 +105,7 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             "color: rgb(0, 191, 255);"
         "}"
     );
+
     ui->creators_info_button->setStyleSheet(
         "QPushButton {"
             "background: transparent;"
@@ -121,7 +113,6 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             "font-size: 96pt;"
             "color: rgb(255, 255, 255);"
         "}"
-
         "QPushButton:hover {"
             "background: transparent;"
             "font-family: \"FREE FAT FONT\";"
@@ -129,6 +120,7 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             "color: rgb(0, 191, 255);"
         "}"
     );
+
     ui->quit_button->setStyleSheet(
         "QPushButton {"
             "background: transparent;"
@@ -136,7 +128,6 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             "font-size: 96pt;"
             "color: rgb(255, 255, 255);"
         "}"
-
         "QPushButton:hover {"
             "background: transparent;"
             "font-family: \"FREE FAT FONT\";"
@@ -144,31 +135,53 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             "color: rgb(0, 191, 255);"
         "}"
     );
-    // relatively reposition the logo and the buttons (30%-70%)
+
     ui->main_screen_layout->setStretch(0, 3);
     ui->main_screen_layout->setStretch(1, 7);
 }
 
-MainMenuWidget::~MainMenuWidget() { delete ui; }
+MainMenuWidget::~MainMenuWidget()
+{
+    delete ui;
+}
 
-// resize event listener
-void MainMenuWidget::resizeEvent(QResizeEvent* event) {
+void MainMenuWidget::onStartButtonClicked()
+{
+    GameStartWindow game_dlg(this);
+
+    connect(&game_dlg, &GameStartWindow::gameStarted,
+            this, [this](int rounds, int bots) {
+                emit startGameRequested(rounds, bots);
+            });
+
+    game_dlg.exec();
+}
+
+void MainMenuWidget::resizeEvent(QResizeEvent* event)
+{
     QWidget::resizeEvent(event);
     updateSpacings();
 
     QPalette palette;
     QPixmap bg(":/images/bg_menu.png");
 
-    palette.setBrush(QPalette::Window, QBrush(bg.scaled(size(), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)));
+    palette.setBrush(QPalette::Window,
+                     QBrush(bg.scaled(size(),
+                                      Qt::KeepAspectRatioByExpanding,
+                                      Qt::SmoothTransformation)));
     setAutoFillBackground(true);
     setBackgroundRole(QPalette::Window);
     this->setPalette(palette);
 }
 
-// rebuilding the interface according to new dimensions
-void MainMenuWidget::updateSpacings() {
-    int widget_height = this->height(), widget_width = this->width();
-    int target_button_width = widget_width * 0.56, target_button_height = widget_height * 0.11;
+void MainMenuWidget::updateSpacings()
+{
+    int widget_height = this->height();
+    int widget_width  = this->width();
+
+    int target_button_width  = widget_width * 0.56;
+    int target_button_height = widget_height * 0.11;
+
     QList<QPushButton*> main_menu_buttons = {
         ui->start_button,
         ui->settings_button,

@@ -192,17 +192,23 @@ void GameProcess::buttonHit(Button* b)
 void GameProcess::setupOgre()
 {
     if (mOgreInitialised) {
-        std::cout << "OGRE already initialized" << std::endl;
+        std::cout << "[OGRE] already initialised" << std::endl;
         return;
     }
 
-    std::cout << "Setting up OGRE..." << std::endl;
+    std::cout << "[OGRE] setupOgre() start" << std::endl;
 
     try {
-        // Создаем Root
-        mRoot = new Ogre::Root();
-        
-        // Настраиваем рендер систему
+        // 1. Root ----------------------------------------------------------
+        if (!mRoot) {
+            // Если у тебя есть plugins.cfg / ogre.cfg / ogre.log, можно:
+            // mRoot = new Ogre::Root("plugins.cfg", "ogre.cfg", "ogre.log");
+            // Но и пустой конструктор тоже допустим.
+            mRoot = new Ogre::Root();
+            std::cout << "[OGRE] Root created" << std::endl;
+        }
+
+        // 2. Выбираем рендер-систему --------------------------------------
         const Ogre::RenderSystemList& renderSystems = mRoot->getAvailableRenderers();
         if (renderSystems.empty()) {
             throw Ogre::Exception(0, "No render systems available", "GameProcess::setupOgre");
@@ -215,37 +221,36 @@ void GameProcess::setupOgre()
                 break;
             }
         }
-
         if (!renderSystem) {
-            renderSystem = renderSystems[0]; // Берем первую доступную
+            renderSystem = renderSystems[0]; // fallback
         }
 
-        std::cout << "Using render system: " << renderSystem->getName() << std::endl;
+        std::cout << "[OGRE] Using render system: " << renderSystem->getName() << std::endl;
         mRoot->setRenderSystem(renderSystem);
-        
-        // Инициализируем без создания окна
+
+        // 3. Инициализация без авто-окна ----------------------------------
         mRoot->initialise(false);
+        std::cout << "[OGRE] Root initialised (no auto window)" << std::endl;
 
-        // Параметры для создания окна
+        // 4. Привязываем OGRE к Qt-виджету --------------------------------
         Ogre::NameValuePairList params;
-        
-        #ifdef Q_OS_WIN
-            params["externalWindowHandle"] = 
-                Ogre::StringConverter::toString(reinterpret_cast<size_t>(winId()));
-        #else
-            // Linux/X11
-            params["parentWindowHandle"] = 
-                Ogre::StringConverter::toString(static_cast<unsigned long>(winId()));
-        #endif
 
-        std::cout << "Creating render window with handle: " 
+#ifdef Q_OS_WIN
+        params["externalWindowHandle"] =
+            Ogre::StringConverter::toString(reinterpret_cast<size_t>(winId()));
+#else
+        // Под X11 Ogre ждёт XID окна в externalWindowHandle
+        params["externalWindowHandle"] =
+            Ogre::StringConverter::toString(static_cast<unsigned long>(winId()));
+#endif
+
+        std::cout << "[OGRE] Creating render window, Qt winId = "
                   << static_cast<unsigned long>(winId()) << std::endl;
 
-        // Создаем окно рендера
         mRenderWindow = mRoot->createRenderWindow(
             "OgreRenderWindow",
             width(), height(),
-            false, // не полноэкранное
+            false,       // не fullscreen
             &params
         );
 
@@ -256,71 +261,85 @@ void GameProcess::setupOgre()
         mRenderWindow->setActive(true);
         mRenderWindow->setVisible(true);
 
-        std::cout << "Render window created successfully: " 
-                  << mRenderWindow->getWidth() << "x" << mRenderWindow->getHeight() << std::endl;
+        std::cout << "[OGRE] Render window created successfully: "
+                  << mRenderWindow->getWidth() << "x" << mRenderWindow->getHeight()
+                  << std::endl;
 
-        // Создаем сцену - ИСПРАВЛЕННАЯ СТРОКА:
-        // Вместо Ogre::ST_GENERIC используем 0 (эквивалент)
-        mSceneManager = mRoot->createSceneManager("DefaultSceneManager", "MainSceneManager");
-        
-        // Настраиваем камеру
+        // 5. SceneManager --------------------------------------------------
+        // Здесь берём простой generic scene manager.
+        // Да, метод помечен как deprecated в новых Ogre, но он РАБОТАЕТ.
+        mSceneManager = mRoot->createSceneManager(0, "MainSceneManager");
+        if (!mSceneManager) {
+            throw Ogre::Exception(0, "Failed to create SceneManager", "GameProcess::setupOgre");
+        }
+        std::cout << "[OGRE] SceneManager created" << std::endl;
+
+        // 6. Камера и viewport ---------------------------------------------
         mCamera = mSceneManager->createCamera("MainCamera");
         mCamera->setNearClipDistance(0.1f);
         mCamera->setFarClipDistance(2000.0f);
         mCamera->setAutoAspectRatio(true);
-        
+
         Ogre::Viewport* vp = mRenderWindow->addViewport(mCamera);
         vp->setBackgroundColour(Ogre::ColourValue(0.0f, 0.0f, 0.03f));
+        std::cout << "[OGRE] Camera and viewport created" << std::endl;
 
-        // Инициализируем систему шейдеров
-        if (!Ogre::RTShader::ShaderGenerator::getSingletonPtr()) {
-            Ogre::RTShader::ShaderGenerator::initialize();
-        }
-        auto* shaderGenerator = Ogre::RTShader::ShaderGenerator::getSingletonPtr();
-        shaderGenerator->addSceneManager(mSceneManager);
-
-        // Создаем камеру
-        mCamPivot = mSceneManager->getRootSceneNode()->createChildSceneNode("CamPivot");
-        mCamYawNode = mCamPivot->createChildSceneNode("CamYaw");
+        // 7. Камерный риг (TPS) --------------------------------------------
+        mCamPivot     = mSceneManager->getRootSceneNode()->createChildSceneNode("CamPivot");
+        mCamYawNode   = mCamPivot->createChildSceneNode("CamYaw");
         mCamPitchNode = mCamYawNode->createChildSceneNode("CamPitch");
-        mCamEye = mCamPitchNode->createChildSceneNode("CamEye");
+        mCamEye       = mCamPitchNode->createChildSceneNode("CamEye");
         mCamEye->attachObject(mCamera);
+
         mCamYawNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
         mCamPitchNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
         mCamEye->setPosition(0, 0, mCamDistCurrent);
+        std::cout << "[OGRE] Camera rig created" << std::endl;
 
-        // Создаем освещение
-        Ogre::Light* dirLight = mSceneManager->createLight("MainLight");
-        dirLight->setType(Ogre::Light::LT_DIRECTIONAL);
-        Ogre::SceneNode* lightNode = mSceneManager->getRootSceneNode()->createChildSceneNode();
-        lightNode->attachObject(dirLight);
-        lightNode->setDirection(Ogre::Vector3(-0.4f, -1.0f, -0.25f).normalisedCopy());
-        dirLight->setDiffuseColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
-        dirLight->setSpecularColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
+        // 8. Свет ----------------------------------------------------------
+        {
+            Ogre::Light* dirLight = mSceneManager->createLight("MainLight");
+            dirLight->setType(Ogre::Light::LT_DIRECTIONAL);
+            Ogre::SceneNode* lightNode = mSceneManager->getRootSceneNode()->createChildSceneNode();
+            lightNode->attachObject(dirLight);
+            lightNode->setDirection(Ogre::Vector3(-0.4f, -1.0f, -0.25f).normalisedCopy());
+            dirLight->setDiffuseColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
+            dirLight->setSpecularColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
 
-        Ogre::Light* skyLight = mSceneManager->createLight("SkyGlow");
-        skyLight->setType(Ogre::Light::LT_POINT);
-        Ogre::SceneNode* skyNode = mSceneManager->getRootSceneNode()->createChildSceneNode(Ogre::Vector3(0, 60, 0));
-        skyNode->attachObject(skyLight);
-        skyLight->setDiffuseColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
-        skyLight->setSpecularColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
-        skyLight->setAttenuation(200.0f, 1.0f, 0.014f, 0.0007f);
+            Ogre::Light* skyLight = mSceneManager->createLight("SkyGlow");
+            skyLight->setType(Ogre::Light::LT_POINT);
+            Ogre::SceneNode* skyNode =
+                mSceneManager->getRootSceneNode()->createChildSceneNode(Ogre::Vector3(0, 60, 0));
+            skyNode->attachObject(skyLight);
+            skyLight->setDiffuseColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
+            skyLight->setSpecularColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
+            skyLight->setAttenuation(200.0f, 1.0f, 0.014f, 0.0007f);
+        }
+        std::cout << "[OGRE] Lights created" << std::endl;
 
+        // 9. Сетка пола ----------------------------------------------------
         createGrid();
+        std::cout << "[OGRE] Grid created" << std::endl;
 
-        // Инициализируем UI
+        // 10. HUD / TrayManager -------------------------------------------
         mTrayMgr = new OgreBites::TrayManager("HUD", mRenderWindow, this);
         mTrayMgr->showFrameStats(OgreBites::TL_BOTTOMLEFT);
         mTrayMgr->showLogo(OgreBites::TL_BOTTOMRIGHT);
         mTrayMgr->hideCursor();
+        std::cout << "[OGRE] TrayManager created" << std::endl;
 
+        // 11. Старт игрового матча (СПАВН ИГРОКОВ!) -----------------------
+        startMatchFresh();
+        std::cout << "[OGRE] Match started" << std::endl;
+
+        // 12. Флаг инициализации ------------------------------------------
         mOgreInitialised = true;
-        std::cout << "OGRE initialization successful!" << std::endl;
+        std::cout << "[OGRE] setupOgre() finished OK" << std::endl;
+    }
+    catch (const Ogre::Exception& e) {
+        std::cerr << "[OGRE] ERROR: " << e.getFullDescription() << std::endl;
 
-    } catch (const Ogre::Exception& e) {
-        std::cerr << "OGRE ERROR: " << e.getFullDescription() << std::endl;
-        
-        // Очистка в случае ошибки
+        // Минималная очистка
         if (mRoot) {
             if (mSceneManager) {
                 mRoot->destroySceneManager(mSceneManager);
@@ -333,16 +352,23 @@ void GameProcess::setupOgre()
             delete mRoot;
             mRoot = nullptr;
         }
-        
+
         QMessageBox::critical(
-            this, "OGRE Error",
-            QString::fromStdString("Failed to initialize OGRE:\n" + e.getFullDescription()));
-        return;
-    } catch (const std::exception& e) {
-        std::cerr << "General ERROR during OGRE setup: " << e.what() << std::endl;
-        return;
+            this,
+            "OGRE Error",
+            QString::fromStdString("Failed to initialize OGRE:\n" + e.getFullDescription())
+        );
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[OGRE] General ERROR during setupOgre: " << e.what() << std::endl;
+        QMessageBox::critical(
+            this,
+            "Error",
+            QString("Failed to initialize OGRE (std::exception): %1").arg(e.what())
+        );
     }
 }
+
 // Qt events
 
 void GameProcess::showEvent(QShowEvent* event)

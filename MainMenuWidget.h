@@ -2,25 +2,30 @@
 #define MAINMENUWIDGET_H
 
 #include <QWidget>
-
-QT_BEGIN_NAMESPACE
-namespace Ui { class MainMenuWidget; }
-QT_END_NAMESPACE
-
-class MainMenuWidget : public QWidget {
+namespace Ui {
+class MainMenuWidget;
+}
+class MainMenuWidget : public QWidget
+{
     Q_OBJECT
+
 public:
-    explicit MainMenuWidget(QWidget* parent = nullptr);
-    ~MainMenuWidget();
+    explicit MainMenuWidget(QWidget *parent = nullptr);
+    ~MainMenuWidget() override;
 
 signals:
     void startGameRequested(int rounds, int bots);
+
 protected:
-    void resizeEvent(QResizeEvent* event);
+    void resizeEvent(QResizeEvent* event) override;
+
 private:
     Ui::MainMenuWidget *ui;
 
     void updateSpacings();
+
+private slots:
+    void onStartButtonClicked();
 };
 
 #endif // MAINMENUWIDGET_H
