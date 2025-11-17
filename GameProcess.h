@@ -159,6 +159,7 @@ private:
     Ogre::SceneManager* mSceneManager = nullptr;
     Ogre::RenderWindow* mRenderWindow = nullptr;
     Ogre::Camera*       mCamera       = nullptr;
+    Ogre::MaterialManager::Listener* mMaterialListener;
 
     // TPS rig
     SceneNode* mCamPivot     = nullptr;
