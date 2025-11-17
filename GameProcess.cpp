@@ -23,22 +23,20 @@ public:
         if (schemeName != Ogre::RTShader::ShaderGenerator::DEFAULT_SCHEME_NAME)
             return nullptr;
 
-        // уже есть RTSS-техника? тогда ок
         Ogre::Technique* bestTech = originalMaterial->getBestTechnique();
         if (!bestTech)
             return nullptr;
 
-        // пробуем сгенерить шейдерную технику на базе текущей
         bool created = mShaderGenerator->createShaderBasedTechnique(
-            originalMaterial->getName(),
-            bestTech->getSchemeName(),   // исходная схема (обычно "Default")
-            schemeName                   // целевая схема (RTSS)
+            *originalMaterial,                
+            bestTech->getSchemeName(),        
+            schemeName                        
         );
 
         if (!created)
             return nullptr;
 
-        // возвращаем только что созданную технику
+        // Ищем только что созданную технику для схемы RTSS
         unsigned short techCount = originalMaterial->getNumTechniques();
         for (unsigned short i = 0; i < techCount; ++i) {
             Ogre::Technique* t = originalMaterial->getTechnique(i);
@@ -51,6 +49,7 @@ public:
 private:
     Ogre::RTShader::ShaderGenerator* mShaderGenerator;
 };
+
 
 
 // Helper to clear dialogs
