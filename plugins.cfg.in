@@ -1,3 +1,4 @@
 PluginFolder=/usr/local/lib/OGRE
 
 Plugin=RenderSystem_GL3Plus
+Plugin=OgreOverlay

@@ -9,10 +9,49 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets Gui OpenGLWidgets)
+find_package(OGRE REQUIRED)
 
-# --- OGRE setup for Ubuntu ---
-set(OGRE_DIR "/usr/local/lib/cmake/OGRE" CACHE PATH "Path to OGRE cmake files")
-find_package(OGRE 14.4 REQUIRED COMPONENTS Bites RTShaderSystem Overlay)
+# --- Executable target ---
+qt_add_executable(lohoTRON
+    ${SOURCES}
+    ${HEADERS}
+)
+
+if (APPLE)
+    set(OGRE_DIR "/opt/local/share/ogre/Cmake")
+    
+    target_link_libraries(lohoTRON PRIVATE
+        Qt6::Core
+        Qt6::Widgets
+        Qt6::Gui
+        Qt6::OpenGLWidgets
+        OgreBites
+        OgreRTShaderSystem
+        OgreMain
+        "-framework OgreOverlay"
+    )
+
+    include(FindPkgConfig)
+    set(OGRE_PLUGIN_DIR "/usr/local/lib")
+    set(OGRE_MEDIA_DIR "/opt/local/share/ogre/Media")
+elseif (LINUX)
+    set(OGRE_DIR "/usr/local/lib/cmake/OGRE")
+
+    target_link_libraries(lohoTRON PRIVATE 
+        Qt6::Core 
+        Qt6::Widgets 
+        Qt6::Gui 
+        Qt6::OpenGLWidgets 
+        OgreBites 
+        OgreRTShaderSystem 
+        OgreOverlay 
+        OgreMain
+    )
+
+    find_package(PkgConfig REQUIRED)
+    set(OGRE_PLUGIN_DIR "/usr/local/lib/OGRE")
+    set(OGRE_MEDIA_DIR "/usr/local/share/OGRE/Media")
+endif ()
 
 # --- Source files ---
 set(SOURCES
@@ -38,37 +77,14 @@ set(HEADERS
     GameProcess.h
 )
 
-# --- Executable target ---
-qt_add_executable(lohoTRON
-    ${SOURCES}
-    ${HEADERS}
-)
-
-# --- Linking ---
-target_link_libraries(lohoTRON PRIVATE 
-    Qt6::Core 
-    Qt6::Widgets 
-    Qt6::Gui 
-    Qt6::OpenGLWidgets 
-    OgreBites 
-    OgreRTShaderSystem 
-    OgreOverlay 
-    OgreMain
-)
-
 target_include_directories(lohoTRON PRIVATE ${OGRE_INCLUDE_DIRS})
 
-# --- SDL2 for Ubuntu ---
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED sdl2)
-if(SDL2_FOUND)
-    target_include_directories(lohoTRON PRIVATE ${SDL2_INCLUDE_DIRS})
-    target_link_libraries(lohoTRON PRIVATE ${SDL2_LIBRARIES})
-endif()
+# --- SDL2 ---
+find_package(SDL2 REQUIRED)
+target_include_directories(lohoTRON PRIVATE ${SDL2_INCLUDE_DIRS})
+target_link_libraries(lohoTRON PRIVATE ${SDL2_LIBRARIES})
 
 # --- Configuration files for OGRE ---
-set(OGRE_PLUGIN_DIR "/usr/local/lib/OGRE")
-set(OGRE_MEDIA_DIR "/usr/local/share/OGRE/Media")
 configure_file(plugins.cfg.in plugins.cfg @ONLY)
 configure_file(resources.cfg.in resources.cfg @ONLY)
 
@@ -97,8 +113,9 @@ endif()
 include(GNUInstallDirs)
 
 install(TARGETS lohoTRON
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
+    BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMALE_INSTALL_LIBDIR}
 )
 
 # --- Qt deployment script ---
@@ -107,6 +124,7 @@ qt_generate_deploy_app_script(
     OUTPUT_SCRIPT deploy_script
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
+
 install(SCRIPT ${deploy_script})
 
 # --- Copy OGRE plugins and resources for Ubuntu ---
