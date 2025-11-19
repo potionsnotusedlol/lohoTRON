@@ -1,5 +1,0 @@
-[General]
-FileSystem=/snap/ogre/current/share/OGRE-14.4/Media
-FileSystem=/snap/ogre/current/share/OGRE-14.4/Media/materials/scripts
-FileSystem=/snap/ogre/current/share/OGRE-14.4/Media/materials/programs/GLSL
-FileSystem=/snap/ogre/current/share/OGRE-14.4/Media/materials/textures
