@@ -214,22 +214,31 @@ void GameProcess::buttonHit(Button* b)
 
 void GameProcess::createScene() {
     std::cout << "\n--- createScene START ---" << std::endl;
-    
+
     if (!mSceneManager) {
         std::cerr << "[SCENE ERROR] mSceneManager is NULL!" << std::endl;
         return;
     }
-    
+
+    // Чтобы не создавать сцену много раз
+    if (mSceneCreated) {
+        std::cout << "[SCENE] Scene already created, skipping" << std::endl;
+        return;
+    }
+
     std::cout << "[SCENE] Calling setupLighting()..." << std::endl;
     setupLighting();
     std::cout << "[SCENE] setupLighting() OK" << std::endl;
-    
+
     std::cout << "[SCENE] Calling createGrid()..." << std::endl;
     createGrid();
     std::cout << "[SCENE] createGrid() OK" << std::endl;
-    
+
+    mSceneCreated = true;
+
     std::cout << "--- createScene END ---\n" << std::endl;
 }
+
 
 void GameProcess::setupLighting() {
     if (!mSceneManager) {
@@ -266,34 +275,35 @@ void GameProcess::setupLighting() {
 
 void GameProcess::initializeOgre() {
     std::cout << "\n========== INITIALIZE OGRE START ==========" << std::endl;
-    
+
     if (mOgreInitialised) {
         std::cout << "[INIT] Already initialized" << std::endl;
+        std::cout << "========== INITIALIZE OGRE END (SKIP) ==========\n" << std::endl;
         return;
     }
-    
+
     try {
         std::cout << "[INIT] Step 1: Calling setupOgre()..." << std::endl;
         setupOgre();
         std::cout << "[INIT] Step 1: setupOgre() completed" << std::endl;
-        
-        // Добавляем ТОЛЬКО освещение
-        std::cout << "[INIT] Step 2: Adding lights..." << std::endl;
-        setupLighting();
-        std::cout << "[INIT] Step 2: Lights added" << std::endl;
-        
+
+        // Сцену и игроков будем создавать в activateGame()
         mOgreInitialised = true;
-        std::cout << "[INIT] OGRE READY (lights only)" << std::endl;
+
+        std::cout << "[INIT] OGRE READY" << std::endl;
         std::cout << "========== INITIALIZE OGRE END (SUCCESS) ==========\n" << std::endl;
-        
-    } catch (const Ogre::Exception& e) {
-        std::cerr << "\n[INIT ERROR] OGRE Exception: " << e.getFullDescription() << std::endl;
+    }
+    catch (const Ogre::Exception& e) {
+        std::cerr << "\n[INIT ERROR] OGRE Exception: "
+                  << e.getFullDescription() << std::endl;
         mOgreInitialised = false;
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e) {
         std::cerr << "\n[INIT ERROR] Exception: " << e.what() << std::endl;
         mOgreInitialised = false;
     }
 }
+
 
 
 
@@ -1204,35 +1214,56 @@ void GameProcess::showPauseDialog() {
 void GameProcess::activateGame() {
     std::cout << "\n========== ACTIVATEGAME START ==========" << std::endl;
     std::cout << "[ACTIVATE] mOgreInitialised: " << mOgreInitialised << std::endl;
-    
+
     if (!mOgreInitialised || !mRenderWindow) {
         std::cerr << "[ACTIVATE ERROR] OGRE not ready!" << std::endl;
+        std::cout << "========== ACTIVATEGAME END (FAIL) ==========\n" << std::endl;
         return;
     }
-    
-    std::cout << "[ACTIVATE] TEST MODE: No players, rendering empty scene" << std::endl;
-    
+
+    // --- создаём сцену при первом запуске ---
+    if (!mSceneCreated) {
+        std::cout << "[ACTIVATE] First time: creating scene..." << std::endl;
+        createScene();
+    } else {
+        std::cout << "[ACTIVATE] Scene already exists" << std::endl;
+    }
+
+    // --- запускаем матч и спавним игрока + ботов ---
+    std::cout << "[ACTIVATE] Starting fresh match..." << std::endl;
+    startMatchFresh();
+
+    mState          = GameState::Playing;
+    mGameTime       = 0.0f;
+    mRoundStartTime = 0.0f;
+    mRoundIndex     = 1;
+    mPlayerWins     = 0;
+    mBotsWins       = 0;
+
+    // --- фокус и управление ---
     std::cout << "[ACTIVATE] Setting focus..." << std::endl;
     setFocus();
     grabKeyboard();
     grabMouse();
     setCursor(Qt::BlankCursor);
-    
+
     QPoint center = mapToGlobal(rect().center());
     QCursor::setPos(center);
     mLastMousePos = rect().center();
-    
+
+    // --- запускаем таймер, который дергает update() и paintEvent() ---
     if (!mTimer->isActive()) {
         std::cout << "[ACTIVATE] Starting timer..." << std::endl;
         mLastTime = QDateTime::currentMSecsSinceEpoch();
-        mTimer->start(16);
+        mTimer->start(16); // ~60 FPS
         std::cout << "[ACTIVATE] Timer started!" << std::endl;
     }
-    
+
     mReadyToRender = true;
-    std::cout << "[ACTIVATE] mReadyToRender = TRUE (empty scene test)" << std::endl;
+    std::cout << "[ACTIVATE] mReadyToRender = TRUE" << std::endl;
     std::cout << "========== ACTIVATEGAME END ==========\n" << std::endl;
 }
+
 
 void GameProcess::hidePauseDialog() {
     if (!mTrayMgr) return;
