@@ -4,7 +4,12 @@
 #include <Ogre.h>
 #include <OgreRTShaderSystem.h>
 #include <OgreTrays.h>
+#include <QApplication>
 
+#include <QTime>
+#include <QDebug>
+#include <QCursor>
+#include <QDateTime>
 #include <QWidget>
 #include <QTimer>
 #include <QKeyEvent>
@@ -17,6 +22,8 @@
 #include <QResizeEvent>
 #include <QMessageBox>
 #include <QPoint>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include <deque>
 #include <vector>
@@ -189,6 +196,7 @@ private:
     bool mBackward = false;
     bool mLeft     = false;
     bool mRight    = false;
+    bool mSceneCreated;
 
     // Movement
     float mMaxForwardSpeed  = 40.0f;
@@ -235,7 +243,9 @@ private:
     bool mOgreInitialised = false;
 
     // Methods
+    void setupLighting();
     void setupOgre();
+    void createScene();      
     void updateGame(float dt);
     void createGrid();
     Entity* createBoxEntity(const String& meshName, const String& entName,
@@ -273,25 +283,6 @@ private:
         mCamEye->setPosition(0, 0, mCamDistCurrent);
     }
 
-    void setupLighting() {
-        // Основной направленный свет
-        Ogre::Light* dirLight = mSceneManager->createLight("MainLight");
-        dirLight->setType(Ogre::Light::LT_DIRECTIONAL);
-        Ogre::SceneNode* lightNode = mSceneManager->getRootSceneNode()->createChildSceneNode();
-        lightNode->attachObject(dirLight);
-        lightNode->setDirection(Ogre::Vector3(-0.4f, -1.0f, -0.25f).normalisedCopy());
-        dirLight->setDiffuseColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
-        dirLight->setSpecularColour(Ogre::ColourValue(0.8f, 0.8f, 0.85f));
-
-        // Дополнительное окружающее освещение
-        Ogre::Light* skyLight = mSceneManager->createLight("SkyGlow");
-        skyLight->setType(Ogre::Light::LT_POINT);
-        Ogre::SceneNode* skyNode = mSceneManager->getRootSceneNode()->createChildSceneNode(Ogre::Vector3(0, 60, 0));
-        skyNode->attachObject(skyLight);
-        skyLight->setDiffuseColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
-        skyLight->setSpecularColour(Ogre::ColourValue(0.10f, 0.22f, 0.7f));
-        skyLight->setAttenuation(200.0f, 1.0f, 0.014f, 0.0007f);
-    }
 };
 
 #endif // GAMEPROCESS_H
