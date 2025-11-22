@@ -81,8 +81,14 @@ GameProcess::GameProcess(QWidget* parent)
     , mCamEye(nullptr)
     , mCamYaw(0.0f)
     , mCamPitch(-0.6f)
+    , mCamDistance(40.0f)
     , mCamDistCurrent(40.0f)
+    , mCamTargetHeight(4.0f)
+    , mCamSmooth(6.0f)
+    , mCamFollowYawSmooth(5.0f)
+    , mMouseSensitivity(0.005f)
     , mOgreInitialised(false)
+    , mReadyToRender(false)
     , mSceneCreated(false)
     , mState(GameState::Playing)
     , mGameTime(0.0f)
@@ -98,7 +104,7 @@ GameProcess::GameProcess(QWidget* parent)
     , mLeft(false)
     , mRight(false)
     , mRmbDown(false)
-    , mTimer(new QTimer(this))  // Создаём только здесь
+    , mTimer(new QTimer(this))
     , mLastTime(0)
 {
     setAttribute(Qt::WA_PaintOnScreen, true);
@@ -109,20 +115,10 @@ GameProcess::GameProcess(QWidget* parent)
     setMouseTracking(true);
     setUpdatesEnabled(true);
     
-    // Подключаем таймер ТОЛЬКО ОДИН РАЗ
+    // Подключаем таймер (но НЕ запускаем!)
     connect(mTimer, &QTimer::timeout, this, QOverload<>::of(&QWidget::update));
     
-    // Камера параметры
-    mCamYaw = 0.0f;
-    mCamPitch = Ogre::Degree(25).valueRadians();
-    mCamDistance = 40.0f;
-    mCamDistCurrent = mCamDistance;
-    mCamTargetHeight = 4.0f;
-    mCamSmooth = 6.0f;
-    mCamFollowYawSmooth = 5.0f;
-    mMouseSensitivity = 0.005f;
-    
-    // Параметры карты
+    // Инициализация игровых параметров
     mMapHalfSize = 60.0f;
     mGridSize = 24;
     mCellSize = (mMapHalfSize * 2.0f) / float(mGridSize);
@@ -133,7 +129,6 @@ GameProcess::GameProcess(QWidget* parent)
     mSelfSkipSegments = 10;
     mSelfTouchEps = 0.02f;
     
-    // Движение
     mAcceleration = 30.0f;
     mBrakeDecel = 40.0f;
     mFriction = 15.0f;
@@ -143,18 +138,19 @@ GameProcess::GameProcess(QWidget* parent)
     mMaxLeanAngle = Ogre::Degree(20).valueRadians();
     mLeanSpeed = 8.0f;
     
-    // Статические спавны
+    // Статические позиции спавна
     mSpawnsStatic.clear();
     mSpawnsStatic.push_back(Ogre::Vector3(0, 0, 30));
     mSpawnsStatic.push_back(Ogre::Vector3(30, 0, 0));
     mSpawnsStatic.push_back(Ogre::Vector3(0, 0, -30));
     mSpawnsStatic.push_back(Ogre::Vector3(-30, 0, 0));
     
-    // Рандом
+    // Инициализация генератора случайных чисел
     mRng.seed(uint32_t(QDateTime::currentMSecsSinceEpoch() & 0xffffffff));
     
-    qDebug() << "GameProcess constructor finished";
+    std::cout << "[CTOR] GameProcess created" << std::endl;
 }
+
 
 
 GameProcess::~GameProcess() {
@@ -268,50 +264,39 @@ void GameProcess::setupLighting() {
     std::cout << "Lighting created!" << std::endl;
 }
 
-
 void GameProcess::initializeOgre() {
     std::cout << "\n========== INITIALIZE OGRE START ==========" << std::endl;
-    std::cout << "[INIT] mOgreInitialised: " << mOgreInitialised << std::endl;
     
     if (mOgreInitialised) {
-        std::cout << "[INIT] Already initialized, aborting" << std::endl;
-        std::cout << "========== INITIALIZE OGRE END (skip) ==========\n" << std::endl;
+        std::cout << "[INIT] Already initialized" << std::endl;
         return;
     }
     
     try {
         std::cout << "[INIT] Step 1: Calling setupOgre()..." << std::endl;
         setupOgre();
-        std::cout << "[INIT] Step 1: setupOgre() OK" << std::endl;
+        std::cout << "[INIT] Step 1: setupOgre() completed" << std::endl;
         
-        std::cout << "[INIT] Step 2: Calling createScene()..." << std::endl;
-        createScene();
-        std::cout << "[INIT] Step 2: createScene() OK" << std::endl;
-        
-        std::cout << "[INIT] Step 3: Calling startMatchFresh()..." << std::endl;
-        startMatchFresh();
-        std::cout << "[INIT] Step 3: startMatchFresh() OK" << std::endl;
+        // Добавляем ТОЛЬКО освещение
+        std::cout << "[INIT] Step 2: Adding lights..." << std::endl;
+        setupLighting();
+        std::cout << "[INIT] Step 2: Lights added" << std::endl;
         
         mOgreInitialised = true;
-        std::cout << "[INIT] mOgreInitialised set to TRUE" << std::endl;
-        
-        std::cout << "[INIT] GAME STARTED (timer NOT started yet)" << std::endl;
-        std::cout << "========== INITIALIZE OGRE END (success) ==========\n" << std::endl;
+        std::cout << "[INIT] OGRE READY (lights only)" << std::endl;
+        std::cout << "========== INITIALIZE OGRE END (SUCCESS) ==========\n" << std::endl;
         
     } catch (const Ogre::Exception& e) {
         std::cerr << "\n[INIT ERROR] OGRE Exception: " << e.getFullDescription() << std::endl;
         mOgreInitialised = false;
-        std::cout << "========== INITIALIZE OGRE END (OGRE error) ==========\n" << std::endl;
     } catch (const std::exception& e) {
-        std::cerr << "\n[INIT ERROR] std::exception: " << e.what() << std::endl;
+        std::cerr << "\n[INIT ERROR] Exception: " << e.what() << std::endl;
         mOgreInitialised = false;
-        std::cout << "========== INITIALIZE OGRE END (std error) ==========\n" << std::endl;
-    } catch (...) {
-        std::cerr << "\n[INIT ERROR] Unknown exception" << std::endl;
-        mOgreInitialised = false;
-        std::cout << "========== INITIALIZE OGRE END (unknown error) ==========\n" << std::endl;
     }
 }
+
+
+
 
 void GameProcess::setupOgre() {
     std::cout << "\n--- setupOgre START ---" << std::endl;
@@ -428,18 +413,17 @@ void GameProcess::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
     std::cout << "\n========== SHOWEVENT START ==========" << std::endl;
     std::cout << "[SHOW] Widget size: " << width() << "x" << height() << std::endl;
-    std::cout << "[SHOW] Widget visible: " << isVisible() << std::endl;
     std::cout << "[SHOW] mOgreInitialised: " << mOgreInitialised << std::endl;
     
     if (mOgreInitialised) {
-        std::cout << "[SHOW] OGRE already initialized, skipping" << std::endl;
-        std::cout << "========== SHOWEVENT END (skip) ==========\n" << std::endl;
+        std::cout << "[SHOW] Already initialized, skipping" << std::endl;
+        std::cout << "========== SHOWEVENT END ==========\n" << std::endl;
         return;
     }
     
     std::cout << "[SHOW] Scheduling initializeOgre in 50ms..." << std::endl;
     QTimer::singleShot(50, this, [this]() {
-        std::cout << "[SHOW] Timer fired, calling initializeOgre..." << std::endl;
+        std::cout << "[SHOW TIMER] Fired, calling initializeOgre..." << std::endl;
         initializeOgre();
     });
     
@@ -447,25 +431,30 @@ void GameProcess::showEvent(QShowEvent* event) {
 }
 
 
+
 void GameProcess::paintEvent(QPaintEvent* /*event*/) {
     static int frameCount = 0;
     
-    if (frameCount < 3) {
-        std::cout << "\n[PAINT] Frame " << frameCount << " START" << std::endl;
+    if (frameCount < 5) {
+        std::cout << "\n========== PAINT Frame " << frameCount << " ==========" << std::endl;
+        std::cout << "[PAINT] mReadyToRender: " << mReadyToRender << std::endl;
     }
     
-    if (!mOgreInitialised) {
-        if (frameCount < 3) std::cout << "[PAINT] Not initialized, skip" << std::endl;
+    if (!mReadyToRender) {
+        if (frameCount < 3) {
+            std::cout << "[PAINT] Not ready, skip\n" << std::endl;
+        }
         return;
     }
     
-    if (!mRoot || !mRenderWindow) {
-        if (frameCount < 3) std::cout << "[PAINT] Root or Window NULL, skip" << std::endl;
+    if (!mOgreInitialised || !mRoot || !mRenderWindow) {
+        std::cout << "[PAINT] OGRE not initialized, skip\n" << std::endl;
         return;
     }
     
-    if (frameCount < 3) {
-        std::cout << "[PAINT] Calculating dt..." << std::endl;
+    if (!mRenderWindow->isActive() || mRenderWindow->isClosed()) {
+        std::cout << "[PAINT] Window not active, skip\n" << std::endl;
+        return;
     }
     
     qint64 now = QDateTime::currentMSecsSinceEpoch();
@@ -474,21 +463,49 @@ void GameProcess::paintEvent(QPaintEvent* /*event*/) {
     mLastTime = now;
     
     try {
-        if (frameCount < 3) std::cout << "[PAINT] Calling updateGame..." << std::endl;
-        updateGame(dt);
+        // ТЕСТ: первые 5 кадров БЕЗ updateGame
+        if (frameCount < 5) {
+            std::cout << "[PAINT] TEST RENDER #" << frameCount << " WITHOUT updateGame" << std::endl;
+            std::cout << "[PAINT] Calling renderOneFrame()..." << std::endl;
+            mRoot->renderOneFrame();
+            std::cout << "[PAINT] Test render SUCCESS!" << std::endl;
+            std::cout << "========== PAINT Frame " << frameCount << " END ==========\n" << std::endl;
+            frameCount++;
+            return; // <--- КРИТИЧНО: выходим до updateGame
+        }
         
-        if (frameCount < 3) std::cout << "[PAINT] Calling renderOneFrame..." << std::endl;
+        // После 5 кадров включаем полную логику
+        if (frameCount == 5) {
+            std::cout << "\n========================================" << std::endl;
+            std::cout << "[PAINT] Starting FULL LOGIC from frame 5" << std::endl;
+            std::cout << "========================================\n" << std::endl;
+        }
+        
+        std::cout << "[PAINT] Frame " << frameCount << " with updateGame" << std::endl;
+        updateGame(dt);
         mRoot->renderOneFrame();
         
-        if (frameCount < 3) std::cout << "[PAINT] Frame " << frameCount << " OK\n" << std::endl;
-        
-    } catch (const std::exception& e) {
-        std::cerr << "\n[PAINT ERROR] Exception: " << e.what() << std::endl;
+    } catch (const Ogre::Exception& e) {
+        std::cerr << "\n[PAINT ERROR] OGRE Exception at frame " << frameCount << ": " 
+                  << e.getFullDescription() << std::endl;
         mTimer->stop();
+        mReadyToRender = false;
+    } catch (const std::exception& e) {
+        std::cerr << "\n[PAINT ERROR] Exception at frame " << frameCount << ": " 
+                  << e.what() << std::endl;
+        mTimer->stop();
+        mReadyToRender = false;
+    } catch (...) {
+        std::cerr << "\n[PAINT ERROR] Unknown exception at frame " << frameCount << std::endl;
+        mTimer->stop();
+        mReadyToRender = false;
     }
     
     frameCount++;
 }
+
+
+
 
 
 void GameProcess::focusInEvent(QFocusEvent* event)
@@ -579,92 +596,92 @@ void GameProcess::wheelEvent(QWheelEvent* event)
 }
 
 // ===== ИГРОВАЯ ЛОГИКА (взята из твоего исходника) =====
-void GameProcess::updateCameraRig(float dt)
-{
-    // Проверяем инициализацию
-    if (!mCamPivot || !mCamYawNode || !mCamPitchNode || !mCamEye) {
-        return;
-    }
-
-    // Проверяем наличие игроков
-    if (mPlayers.empty() || mHumanIndex >= mPlayers.size()) {
-        return;
-    }
-
-    Player& humanPlayer = mPlayers[mHumanIndex];
+void GameProcess::updateCameraRig(float dt) {
+    static int camUpdateCount = 0;
     
-    // Проверяем что игрок жив и его node существует
-    if (!humanPlayer.alive || !humanPlayer.node) {
+    if (camUpdateCount < 3) {
+        std::cout << "[CAMERA #" << camUpdateCount << "] Updating camera rig, dt=" << dt << std::endl;
+    }
+    
+    // КРИТИЧНЫЕ ПРОВЕРКИ
+    if (!mCamPivot || !mCamYawNode || !mCamPitchNode || !mCamEye) {
+        if (camUpdateCount < 3) {
+            std::cerr << "[CAMERA ERROR] Camera rig nodes are NULL!" << std::endl;
+        }
         return;
     }
-
-    try {
-        // Позиция камеры следует за игроком
-        Ogre::Vector3 target = humanPlayer.node->getPosition() + Ogre::Vector3(0, mCamTargetHeight, 0);
-        mCamPivot->setPosition(target);
-
-        // Автоматическое слежение за поворотом игрока, если не управляем вручную
-        if (!mRmbDown) {
-            float diff = wrapPi(humanPlayer.yaw - mCamYaw);
-            float t = 1.0f - std::exp(-mCamFollowYawSmooth * dt);
-            mCamYaw += diff * t;
-            mCamYawNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamYaw), Ogre::Vector3::UNIT_Y));
+    
+    if (mPlayers.empty()) {
+        if (camUpdateCount < 3) {
+            std::cout << "[CAMERA] No players, skip" << std::endl;
         }
-
-        // Плавное изменение дистанции камеры
-        float tz = 1.0f - std::exp(-mCamSmooth * dt);
-        mCamDistCurrent += (mCamDistance - mCamDistCurrent) * tz;
-
-        // Применяем повороты камеры
-        mCamPitchNode->setOrientation(Ogre::Quaternion(Ogre::Radian(mCamPitch), Ogre::Vector3::UNIT_X));
-        mCamEye->setPosition(0, 0, mCamDistCurrent);
-
-    } catch (const std::exception& e) {
-        std::cerr << "Error in updateCameraRig: " << e.what() << std::endl;
+        return;
     }
+    
+    if (mHumanIndex >= mPlayers.size()) {
+        std::cerr << "[CAMERA ERROR] Invalid mHumanIndex!" << std::endl;
+        return;
+    }
+    
+    if (!mPlayers[mHumanIndex].node) {
+        std::cerr << "[CAMERA ERROR] Player node is NULL!" << std::endl;
+        return;
+    }
+    
+    // Ваша основная логика updateCameraRig
+    // ...
+    
+    camUpdateCount++;
 }
 
+
 void GameProcess::updateGame(float dt) {
+    static int updateCount = 0;
+    
+    if (updateCount < 3) {
+        std::cout << "[UPDATE #" << updateCount << "] dt=" << dt 
+                  << ", players=" << mPlayers.size() << std::endl;
+    }
+    
     // Базовые проверки
-    if (!mRoot || !mRenderWindow || !mSceneManager || !mCamera) {
+    if (!mRoot || !mSceneManager || !mCamera) {
+        if (updateCount < 3) {
+            std::cout << "[UPDATE] OGRE not ready, skip" << std::endl;
+        }
         return;
     }
     
-    // Проверка игроков
     if (mPlayers.empty()) {
+        if (updateCount < 3) {
+            std::cout << "[UPDATE] No players, skip" << std::endl;
+        }
         return;
     }
     
-    // Проверка индекса человека
     if (mHumanIndex >= mPlayers.size()) {
-        std::cerr << "Invalid human index" << std::endl;
+        std::cerr << "[UPDATE ERROR] Invalid mHumanIndex" << std::endl;
         return;
     }
     
-    // Проверка состояния игры
-    if (mState == GameState::Paused || mState == GameState::GameEnd) {
-        updateCameraRig(dt);
-        return;
+    dt = std::min(dt, 0.1f);
+    mGameTime += dt;
+    
+    // ВРЕМЕННО: МИНИМАЛЬНАЯ ЛОГИКА - ТОЛЬКО КАМЕРА
+    if (updateCount < 3) {
+        std::cout << "[UPDATE] Updating camera only (minimal logic)" << std::endl;
     }
     
-    // Проверка, что все игроки имеют node
-    for (const auto& player : mPlayers) {
-        if (player.alive && !player.node) {
-            std::cerr << "Player has no node!" << std::endl;
-            return;
+    // Проверяем, что камера pivot существует
+    if (mCamPivot && mPlayers[mHumanIndex].node) {
+        Ogre::Vector3 playerPos = mPlayers[mHumanIndex].node->getPosition();
+        mCamPivot->setPosition(playerPos.x, 0, playerPos.z);
+        
+        if (updateCount < 3) {
+            std::cout << "[UPDATE] Camera follows player at " << playerPos << std::endl;
         }
     }
     
-    try {
-        // Ограничение дельты
-        dt = std::min(dt, 0.1f);
-        mGameTime += dt;
-        
-        // ... весь остальной код updateGame ...
-        
-    } catch (const std::exception& e) {
-        std::cerr << "Exception in updateGame: " << e.what() << std::endl;
-    }
+    updateCount++;
 }
 
 
@@ -768,45 +785,59 @@ Ogre::Entity* GameProcess::createBoxEntity(const Ogre::String& meshName, const O
 void GameProcess::spawnPlayer(bool human, const Ogre::Vector3& start,
                               const Ogre::ColourValue& color, const Ogre::String& name)
 {
+    std::cout << "\n[SPAWN] Starting spawn for: " << name << std::endl;
+    
     // Проверяем инициализацию сцены
     if (!mSceneManager) {
-        std::cerr << "Cannot spawn player: SceneManager is null" << std::endl;
+        std::cerr << "[SPAWN ERROR] SceneManager is null!" << std::endl;
         return;
     }
-
+    
     try {
+        std::cout << "[SPAWN] Creating Player structure..." << std::endl;
         Player newPlayer;
         newPlayer.human = human;
         newPlayer.color = Ogre::ColourValue(color.r, color.g, color.b, 1.0f);
-        newPlayer.name  = name;
+        newPlayer.name = name;
         newPlayer.alive = true;
-
+        
         // Создаем модель игрока
+        std::cout << "[SPAWN] Creating box entity..." << std::endl;
         newPlayer.ent = createBoxEntity(name + "_BoxMesh", name + "_BoxEntity", 
                                        2.5f, 1.6f, 1.6f, newPlayer.color);
         if (!newPlayer.ent) {
             throw std::runtime_error("Failed to create player entity");
         }
-
+        std::cout << "[SPAWN] Box entity created: " << newPlayer.ent->getName() << std::endl;
+        
+        // Создаем узел
+        std::cout << "[SPAWN] Creating scene node..." << std::endl;
         newPlayer.node = mSceneManager->getRootSceneNode()->createChildSceneNode(name + "_Node");
         if (!newPlayer.node) {
             throw std::runtime_error("Failed to create player node");
         }
+        std::cout << "[SPAWN] Node created: " << newPlayer.node->getName() << std::endl;
+        
+        // Прикрепляем entity к node
+        std::cout << "[SPAWN] Attaching entity to node..." << std::endl;
         newPlayer.node->attachObject(newPlayer.ent);
-
+        std::cout << "[SPAWN] Entity attached, objects on node: " << newPlayer.node->numAttachedObjects() << std::endl;
+        
         // Корректируем позицию чтобы модель стояла на земле
         Ogre::AxisAlignedBox bb = newPlayer.ent->getBoundingBox();
         float raise = -bb.getMinimum().y;
         newPlayer.node->translate(0, raise, 0);
-
+        
         // Устанавливаем начальную позицию и ориентацию
         newPlayer.node->setPosition(start);
         newPlayer.yaw = 0.0f;
         newPlayer.speed = 0.0f;
         newPlayer.lean = 0.0f;
         newPlayer.node->setOrientation(Ogre::Quaternion(Ogre::Radian(newPlayer.yaw), Ogre::Vector3::UNIT_Y));
-
+        std::cout << "[SPAWN] Position set to: " << newPlayer.node->getPosition() << std::endl;
+        
         // Создаем свечение
+        std::cout << "[SPAWN] Creating glow light..." << std::endl;
         newPlayer.glow = mSceneManager->createLight(name + "_Glow");
         if (!newPlayer.glow) {
             throw std::runtime_error("Failed to create player glow light");
@@ -818,19 +849,31 @@ void GameProcess::spawnPlayer(bool human, const Ogre::Vector3& start,
         
         Ogre::SceneNode* glowNode = newPlayer.node->createChildSceneNode(name + "_GlowNode", Ogre::Vector3(0, 1.0f, 0));
         glowNode->attachObject(newPlayer.glow);
-
+        std::cout << "[SPAWN] Glow light created and attached" << std::endl;
+        
         // Создаем материал для следа
-        Ogre::MaterialPtr trailMat = Ogre::MaterialManager::getSingleton().create(
-            name + "_TrailMat", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-        Ogre::Pass* pass = trailMat->getTechnique(0)->getPass(0);
-        pass->setLightingEnabled(false);
-        pass->setDiffuse(newPlayer.color);
-        pass->setAmbient(Ogre::ColourValue::Black);
-        pass->setSelfIllumination(newPlayer.color);
-        pass->setSceneBlending(Ogre::SBT_ADD);
-        pass->setDepthWriteEnabled(false);
-
+        std::cout << "[SPAWN] Creating trail material..." << std::endl;
+        Ogre::String trailMatName = name + "_TrailMat";
+        Ogre::MaterialPtr trailMat;
+        
+        if (Ogre::MaterialManager::getSingleton().resourceExists(trailMatName)) {
+            std::cout << "[SPAWN] Trail material already exists, reusing..." << std::endl;
+            trailMat = Ogre::MaterialManager::getSingleton().getByName(trailMatName);
+        } else {
+            trailMat = Ogre::MaterialManager::getSingleton().create(
+                trailMatName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+            Ogre::Pass* pass = trailMat->getTechnique(0)->getPass(0);
+            pass->setLightingEnabled(false);
+            pass->setDiffuse(newPlayer.color);
+            pass->setAmbient(Ogre::ColourValue::Black);
+            pass->setSelfIllumination(newPlayer.color);
+            pass->setSceneBlending(Ogre::SBT_ADD);
+            pass->setDepthWriteEnabled(false);
+            std::cout << "[SPAWN] Trail material created" << std::endl;
+        }
+        
         // Создаем след
+        std::cout << "[SPAWN] Creating trail..." << std::endl;
         newPlayer.trail = mSceneManager->createBillboardChain(name + "_Trail");
         if (!newPlayer.trail) {
             throw std::runtime_error("Failed to create trail");
@@ -839,32 +882,47 @@ void GameProcess::spawnPlayer(bool human, const Ogre::Vector3& start,
         newPlayer.trail->setMaxChainElements(1024);
         newPlayer.trail->setUseTextureCoords(false);
         newPlayer.trail->setUseVertexColours(true);
-        newPlayer.trail->setMaterialName(name + "_TrailMat");
+        newPlayer.trail->setMaterialName(trailMatName);
         
         Ogre::SceneNode* trailNode = mSceneManager->getRootSceneNode()->createChildSceneNode(name + "_TrailNode");
         trailNode->attachObject(newPlayer.trail);
-
+        std::cout << "[SPAWN] Trail created and attached" << std::endl;
+        
         // Настраиваем ИИ для ботов
         if (!newPlayer.human) {
             newPlayer.aiTurnTimer = frand(0.5f, 2.0f);
             newPlayer.aiTurnDir = (frand(0.0f, 1.0f) > 0.5f ? +1.0f : -1.0f);
+            std::cout << "[SPAWN] AI initialized for bot" << std::endl;
         }
-
+        
         // Инициализируем позиции для коллизий
         newPlayer.lastTrailPos = start;
         newPlayer.framePrevPos = start;
-        newPlayer.frameNewPos  = start;
-
+        newPlayer.frameNewPos = start;
+        
         // Добавляем игрока в список
         mPlayers.push_back(newPlayer);
         
-        std::cout << "Spawned player: " << name << " at (" 
-                  << start.x << ", " << start.y << ", " << start.z << ")" << std::endl;
-
+        std::cout << "[SPAWN] SUCCESS: " << name << " spawned at " << start << std::endl;
+        std::cout << "[SPAWN] Total players now: " << mPlayers.size() << std::endl;
+        std::cout << "[SPAWN] Player details:" << std::endl;
+        std::cout << "  - node: " << newPlayer.node->getName() << std::endl;
+        std::cout << "  - entity: " << newPlayer.ent->getName() << std::endl;
+        std::cout << "  - attached objects: " << newPlayer.node->numAttachedObjects() << std::endl;
+        std::cout << "  - position: " << newPlayer.node->getPosition() << std::endl;
+        std::cout << "[SPAWN] End\n" << std::endl;
+        
+    } catch (const Ogre::Exception& e) {
+        std::cerr << "\n[SPAWN ERROR] OGRE Exception for '" << name << "': " 
+                  << e.getFullDescription() << std::endl;
     } catch (const std::exception& e) {
-        std::cerr << "Error spawning player '" << name << "': " << e.what() << std::endl;
+        std::cerr << "\n[SPAWN ERROR] Exception for '" << name << "': " 
+                  << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "\n[SPAWN ERROR] Unknown exception for '" << name << "'" << std::endl;
     }
 }
+
 
 float GameProcess::frand(float a, float b) {
     std::uniform_real_distribution<float> d(a,b);
@@ -875,32 +933,57 @@ void GameProcess::startMatchFresh() {
     std::cout << "\n--- startMatchFresh START ---" << std::endl;
     
     if (!mSceneManager) {
-        std::cerr << "[MATCH ERROR] mSceneManager is NULL!" << std::endl;
+        std::cerr << "[MATCH ERROR] SceneManager is NULL!" << std::endl;
         return;
     }
     
     if (!mCamera) {
-        std::cerr << "[MATCH ERROR] mCamera is NULL!" << std::endl;
+        std::cerr << "[MATCH ERROR] Camera is NULL!" << std::endl;
         return;
     }
     
-    std::cout << "[MATCH] SceneManager OK, Camera OK" << std::endl;
-    std::cout << "[MATCH] Starting player spawn..." << std::endl;
+    std::cout << "[MATCH] Clearing old players..." << std::endl;
+    mPlayers.clear();
     
-    // ... твой код спавна игроков ...
+    std::cout << "[MATCH] Preparing spawn positions..." << std::endl;
+    std::vector<Ogre::Vector3> positions = mSpawnsStatic;
+    std::vector<std::string> names = {"Player", "Bot_Red", "Bot_Green", "Bot_Yellow"};
+    std::vector<Ogre::ColourValue> colors = {
+        Ogre::ColourValue(0.2f, 0.6f, 1.0f),   // Синий
+        Ogre::ColourValue(1.0f, 0.2f, 0.2f),   // Красный
+        Ogre::ColourValue(0.2f, 1.0f, 0.2f),   // Зелёный
+        Ogre::ColourValue(1.0f, 1.0f, 0.2f)    // Жёлтый
+    };
     
-    std::cout << "[MATCH] All players spawned, checking..." << std::endl;
+    int toSpawn = std::min((int)positions.size(), 1 + mNumberOfBots);
+    
+    std::cout << "[MATCH] Spawning " << toSpawn << " players..." << std::endl;
+    for (int i = 0; i < toSpawn; i++) {
+        bool isHuman = (i == 0);
+        std::string name = (i < names.size()) ? names[i] : ("Bot_" + std::to_string(i));
+        Ogre::ColourValue color = (i < colors.size()) ? colors[i] : Ogre::ColourValue::White;
+        Ogre::Vector3 pos = positions[i];
+        
+        std::cout << "[MATCH] Spawning #" << i << ": " << name << " at " << pos << std::endl;
+        spawnPlayer(isHuman, pos, color, name);
+    }
+    
+    std::cout << "[MATCH] Total players spawned: " << mPlayers.size() << std::endl;
+    std::cout << "[MATCH] Verifying players..." << std::endl;
+    
+    // Упрощенная проверка - только node
     for (size_t i = 0; i < mPlayers.size(); i++) {
         if (!mPlayers[i].node) {
-            std::cerr << "[MATCH ERROR] Player " << i << " has no node!" << std::endl;
+            std::cerr << "[MATCH ERROR] Player " << i << " has NO NODE!" << std::endl;
         } else {
-            std::cout << "[MATCH] Player " << i << " OK at " << mPlayers[i].node->getPosition() << std::endl;
+            std::cout << "[MATCH] Player " << i << " (" << mPlayers[i].name 
+                      << ") OK at " << mPlayers[i].node->getPosition() << std::endl;
         }
     }
     
-    std::cout << "--- startMatchFresh END ---\n" << std::endl;
+    mRoundStartTime = mGameTime;
+    std::cout << "--- startMatchFresh END (players: " << mPlayers.size() << ") ---\n" << std::endl;
 }
-
 
 void GameProcess::startNewRoundRandom() {
     const int N = (int)mPlayers.size();
@@ -1121,32 +1204,24 @@ void GameProcess::showPauseDialog() {
 void GameProcess::activateGame() {
     std::cout << "\n========== ACTIVATEGAME START ==========" << std::endl;
     std::cout << "[ACTIVATE] mOgreInitialised: " << mOgreInitialised << std::endl;
-    std::cout << "[ACTIVATE] mRenderWindow: " << (mRenderWindow ? "OK" : "NULL") << std::endl;
     
     if (!mOgreInitialised || !mRenderWindow) {
-        std::cerr << "[ACTIVATE ERROR] Cannot activate: OGRE not initialized!" << std::endl;
-        std::cout << "========== ACTIVATEGAME END (error) ==========\n" << std::endl;
+        std::cerr << "[ACTIVATE ERROR] OGRE not ready!" << std::endl;
         return;
     }
     
+    std::cout << "[ACTIVATE] TEST MODE: No players, rendering empty scene" << std::endl;
+    
     std::cout << "[ACTIVATE] Setting focus..." << std::endl;
     setFocus();
-    
-    std::cout << "[ACTIVATE] Grabbing keyboard..." << std::endl;
     grabKeyboard();
-    
-    std::cout << "[ACTIVATE] Grabbing mouse..." << std::endl;
     grabMouse();
-    
-    std::cout << "[ACTIVATE] Hiding cursor..." << std::endl;
     setCursor(Qt::BlankCursor);
     
-    std::cout << "[ACTIVATE] Centering cursor..." << std::endl;
     QPoint center = mapToGlobal(rect().center());
     QCursor::setPos(center);
     mLastMousePos = rect().center();
     
-    std::cout << "[ACTIVATE] Timer active: " << mTimer->isActive() << std::endl;
     if (!mTimer->isActive()) {
         std::cout << "[ACTIVATE] Starting timer..." << std::endl;
         mLastTime = QDateTime::currentMSecsSinceEpoch();
@@ -1154,7 +1229,9 @@ void GameProcess::activateGame() {
         std::cout << "[ACTIVATE] Timer started!" << std::endl;
     }
     
-    std::cout << "========== ACTIVATEGAME END (success) ==========\n" << std::endl;
+    mReadyToRender = true;
+    std::cout << "[ACTIVATE] mReadyToRender = TRUE (empty scene test)" << std::endl;
+    std::cout << "========== ACTIVATEGAME END ==========\n" << std::endl;
 }
 
 void GameProcess::hidePauseDialog() {

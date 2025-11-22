@@ -233,6 +233,7 @@ private:
     // UI
     OgreBites::TrayManager* mTrayMgr = nullptr;
     bool mOgreInitialised = false;
+    bool mReadyToRender;
 
     // Methods
     void setupLighting();

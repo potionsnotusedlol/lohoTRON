@@ -38,22 +38,19 @@ void mainwindow::onStartGameRequested(int rounds, int bots)
     qDebug() << "Starting game with rounds:" << rounds << "bots:" << bots;
     
     game_proc_window->setGameSettings(rounds, bots);
-    
-    // 1. Переключаем виджет
     stacked->setCurrentWidget(game_proc_window);
     
-    // 2. Даём фокус
     game_proc_window->activateWindow();
     game_proc_window->setFocus(Qt::ActiveWindowFocusReason);
     
-    // 3. Обновляем GUI
     QApplication::processEvents();
     
-    // 4. ОТЛОЖЕННАЯ активация игры (запуск таймера)
+    // ОТЛОЖЕННАЯ активация (запуск рендера)
     QTimer::singleShot(300, game_proc_window, &GameProcess::activateGame);
     
-    qDebug() << "Switched to game process, activation scheduled";
+    qDebug() << "Switched to game process";
 }
+
 
 
 void mainwindow::returnToMainMenu() {
