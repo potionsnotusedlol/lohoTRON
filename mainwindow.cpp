@@ -33,24 +33,28 @@ mainwindow::~mainwindow() {
     // Автоматическое удаление через родительскую структуру Qt
 }
 
-void mainwindow::onStartGameRequested(int rounds, int bots) {
+void mainwindow::onStartGameRequested(int rounds, int bots)
+{
     qDebug() << "Starting game with rounds:" << rounds << "bots:" << bots;
     
-    // Устанавливаем настройки игры
     game_proc_window->setGameSettings(rounds, bots);
     
-    // Переключаемся на игровой процесс
+    // 1. Переключаем виджет
     stacked->setCurrentWidget(game_proc_window);
     
-    // Даем фокус игровому процессу (важно для обработки ввода)
-    game_proc_window->setFocus();
+    // 2. Даём фокус
+    game_proc_window->activateWindow();
+    game_proc_window->setFocus(Qt::ActiveWindowFocusReason);
     
-    // Активируем игровой процесс
-    game_proc_window->setFocusPolicy(Qt::StrongFocus);
-    game_proc_window->setFocus();
+    // 3. Обновляем GUI
+    QApplication::processEvents();
     
-    qDebug() << "Switched to game process, focus:" << game_proc_window->hasFocus();
+    // 4. ОТЛОЖЕННАЯ активация игры (запуск таймера)
+    QTimer::singleShot(300, game_proc_window, &GameProcess::activateGame);
+    
+    qDebug() << "Switched to game process, activation scheduled";
 }
+
 
 void mainwindow::returnToMainMenu() {
     stacked->setCurrentWidget(menu);

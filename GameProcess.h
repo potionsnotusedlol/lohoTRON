@@ -123,18 +123,7 @@ public:
         }
     }
 
-    void activateGame() {
-        std::cout << "Activating game..." << std::endl;
-        setFocus();
-        grabKeyboard();
-        grabMouse();
-        setCursor(Qt::BlankCursor);
-
-        QCursor::setPos(mapToGlobal(QPoint(width()/2, height()/2)));
-        mLastMousePos = QPoint(width()/2, height()/2);
-
-        std::cout << "Game activated - input captured" << std::endl;
-    }
+    void activateGame();
 
     void deactivateGame() {
         releaseKeyboard();
@@ -166,7 +155,10 @@ private:
     Ogre::SceneManager* mSceneManager = nullptr;
     Ogre::RenderWindow* mRenderWindow = nullptr;
     Ogre::Camera*       mCamera       = nullptr;
+    Ogre::Viewport* mViewport;
     Ogre::MaterialManager::Listener* mMaterialListener;
+    Ogre::MaterialManager::Listener* mMaterialMgrListener;
+    Ogre::RTShader::ShaderGenerator* mShaderGenerator;
 
     // TPS rig
     SceneNode* mCamPivot     = nullptr;
@@ -245,6 +237,7 @@ private:
     // Methods
     void setupLighting();
     void setupOgre();
+    void initializeOgre(); 
     void createScene();      
     void updateGame(float dt);
     void createGrid();
