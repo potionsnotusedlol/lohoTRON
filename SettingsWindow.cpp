@@ -189,10 +189,6 @@ void SettingsWindow::showEvent(QShowEvent* event) {
 
     if (win) {
         QRect g = win->geometry();
-    QWidget* win = window();
-
-    if (win) {
-        QRect g = win->geometry();
 
         move(g.center() - rect().center());
     }
@@ -207,7 +203,6 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
-// closing fade out animation handler
 // closing fade out animation handler
 void SettingsWindow::closeEvent(QCloseEvent* event) {
     if (!closing) {
