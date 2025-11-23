@@ -8,13 +8,20 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets Gui)
+find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets Gui OpenGLWidgets)
+find_package(OGRE REQUIRED)
 
-set(OGRE_DIR "/usr/local/lib/cmake/OGRE" CACHE PATH "Path to OGRE cmake files")
-find_package(OGRE 14.4 REQUIRED COMPONENTS Bites RTShaderSystem Overlay)
+if(APPLE)
+    set(OGRE_DIR "/opt/local/share/ogre/Cmake")
+    set(OGRE_PLUGIN_DIR "/usr/local/lib")
+    set(OGRE_MEDIA_DIR "/opt/local/share/ogre/Media")
+elseif(UNIX)
+    set(OGRE_DIR "/usr/local/lib/cmake/OGRE")
+    set(OGRE_PLUGIN_DIR "/usr/local/lib/OGRE")
+    set(OGRE_MEDIA_DIR "/usr/local/share/OGRE/Media")
+endif()
 
-find_package(OpenGL REQUIRED)
-
+# --- Source files ---
 set(SOURCES
     main.cpp
     mainwindow.cpp
@@ -38,35 +45,70 @@ set(HEADERS
     GameProcess.h
 )
 
+# --- Executable target ---
 qt_add_executable(lohoTRON
     ${SOURCES}
     ${HEADERS}
 )
 
-target_link_libraries(lohoTRON PRIVATE
-    Qt6::Core
-    Qt6::Widgets
-    Qt6::Gui
+if(APPLE)
+    target_link_libraries(lohoTRON PRIVATE
+        Qt6::Core
+        Qt6::Widgets
+        Qt6::Gui
+        Qt6::OpenGLWidgets
+        OgreBites
+        OgreRTShaderSystem
+        OgreMain
+        "-framework OgreOverlay"
+        "-framework OpenGL"
+    )
+elseif(UNIX)
+    target_link_libraries(lohoTRON PRIVATE 
+        Qt6::Core 
+        Qt6::Widgets 
+        Qt6::Gui 
+        Qt6::OpenGLWidgets 
+        OgreBites 
+        OgreRTShaderSystem 
+        OgreOverlay 
+        OgreMain
+    )
 
-    OgreMain
-    OgreBites
-    OgreRTShaderSystem
-    OgreOverlay
+    find_library(GL_LIBRARY GL)
 
-    OpenGL::GL
-)
-
-if(OGRE_INCLUDE_DIRS)
-    target_include_directories(lohoTRON PRIVATE ${OGRE_INCLUDE_DIRS})
+    if(GL_LIBRARY)
+        target_link_libraries(lohoTRON PRIVATE ${GL_LIBRARY})
+    endif()
 endif()
 
+
+target_include_directories(lohoTRON PRIVATE ${OGRE_INCLUDE_DIRS})
+# --- SDL2 ---
+find_package(SDL2 REQUIRED)
+target_include_directories(lohoTRON PRIVATE ${SDL2_INCLUDE_DIRS})
+target_link_libraries(lohoTRON PRIVATE ${SDL2_LIBRARIES})
+# --- Configuration files for OGRE ---
+configure_file(plugins.cfg.in plugins.cfg @ONLY)
+configure_file(resources.cfg.in resources.cfg @ONLY)
+
+# --- Platform-specific tweaks ---
 if(WIN32)
     set_target_properties(lohoTRON PROPERTIES WIN32_EXECUTABLE TRUE)
 elseif(APPLE)
     set_target_properties(lohoTRON PROPERTIES MACOSX_BUNDLE TRUE)
-elseif(UNIX AND NOT APPLE)
+endif()
+
+find_package(PkgConfig REQUIRED)
+
+if(UNIX AND NOT APPLE)
     find_package(X11 REQUIRED)
     target_link_libraries(lohoTRON PRIVATE X11 Xxf86vm)
+    find_library(GLUT_LIBRARY glut)
+
+    if(GLUT_LIBRARY)
+        target_link_libraries(lohoTRON PRIVATE ${GLUT_LIBRARY})
+    endif()
 endif()
 
 set(OGRE_PLUGIN_DIR "/usr/local/lib/OGRE")
@@ -89,14 +131,3 @@ qt_generate_deploy_app_script(
 )
 
 install(SCRIPT ${deploy_script})
-
-if(UNIX AND NOT APPLE)
-    add_custom_command(TARGET lohoTRON POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_CURRENT_BINARY_DIR}/plugins.cfg
-            ${CMAKE_CURRENT_BINARY_DIR}/bin/plugins.cfg
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_CURRENT_BINARY_DIR}/resources.cfg
-            ${CMAKE_CURRENT_BINARY_DIR}/bin/resources.cfg
-    )
-endif()
