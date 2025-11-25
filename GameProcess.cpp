@@ -1,5 +1,4 @@
 #include "GameProcess.h"
-
 #include <QtMath>
 
 GameProcess::GameProcess(QWidget* parent)
@@ -10,15 +9,15 @@ GameProcess::GameProcess(QWidget* parent)
     m_gridSize    = m_fieldSize;
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
 
-    m_bike.pos   = QVector3D(0.0f, 0.5f, 0.0f);
+    m_bike.pos   = QVector3D(0.0f, 0.0f, 0.0f);
     m_bike.yaw   = 0.0f;
     m_bike.speed = 0.0f;
     m_bike.lean  = 0.0f;
 
-    m_camYaw          = 0.0f;
-    m_camPitch        = -0.35f;
-    m_camDistance     = 8.0f;
-    m_camDistanceCur  = m_camDistance;
+    m_camYaw         = 0.0f;
+    m_camPitch       = -0.6f;
+    m_camDistance    = 14.0f;
+    m_camDistanceCur = m_camDistance;
     m_camTargetHeight = 2.0f;
 
     m_timer.start();
@@ -38,7 +37,7 @@ void GameProcess::setFieldSize(int n)
     m_gridSize  = n;
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
 
-    m_bike.pos = QVector3D(0.0f, 0.5f, 0.0f);
+    m_bike.pos = QVector3D(0.0f, 0.0f, 0.0f);
 
     update();
 }
@@ -81,7 +80,6 @@ void GameProcess::paintGL()
     setupView();
     drawScene3D();
 
-    // 2D-оверлей: ПАУЗА
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
     if (m_paused) {
@@ -103,20 +101,16 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
     switch (event->key()) {
     case Qt::Key_W:
     case Qt::Key_Up:
-        m_keyForward = true;
-        break;
+        m_keyForward = true; break;
     case Qt::Key_S:
     case Qt::Key_Down:
-        m_keyBackward = true;
-        break;
+        m_keyBackward = true; break;
     case Qt::Key_A:
     case Qt::Key_Left:
-        m_keyLeft = true;
-        break;
+        m_keyLeft = true; break;
     case Qt::Key_D:
     case Qt::Key_Right:
-        m_keyRight = true;
-        break;
+        m_keyRight = true; break;
     default:
         break;
     }
@@ -129,20 +123,16 @@ void GameProcess::keyReleaseEvent(QKeyEvent* event)
     switch (event->key()) {
     case Qt::Key_W:
     case Qt::Key_Up:
-        m_keyForward = false;
-        break;
+        m_keyForward = false; break;
     case Qt::Key_S:
     case Qt::Key_Down:
-        m_keyBackward = false;
-        break;
+        m_keyBackward = false; break;
     case Qt::Key_A:
     case Qt::Key_Left:
-        m_keyLeft = false;
-        break;
+        m_keyLeft = false; break;
     case Qt::Key_D:
     case Qt::Key_Right:
-        m_keyRight = false;
-        break;
+        m_keyRight = false; break;
     default:
         break;
     }
@@ -219,12 +209,12 @@ void GameProcess::updateSimulation(float dt)
 
     float speedFactor = std::min(1.0f, std::fabs(m_bike.speed) / m_maxForwardSpeed);
     float targetLean = turn * m_maxLeanAngle * speedFactor;
-    float lerpT = std::min(1.0f, m_leanSpeed * dt);
-    m_bike.lean = lerpf(m_bike.lean, targetLean, lerpT);
+    float tLean = std::min(1.0f, m_leanSpeed * dt);
+    m_bike.lean = lerpf(m_bike.lean, targetLean, tLean);
 
     float cy = std::cos(m_bike.yaw);
     float sy = std::sin(m_bike.yaw);
-    QVector3D forward(sy, 0.0f, -cy);
+    QVector3D forward(sy, 0.0f, -cy); 
 
     QVector3D cand = m_bike.pos + forward * (m_bike.speed * dt);
 
@@ -242,12 +232,6 @@ void GameProcess::updateSimulation(float dt)
 void GameProcess::updateCamera(float dt)
 {
     m_camTarget = m_bike.pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
-
-    if (!m_rmbDown) {
-        float diff = wrapPi(m_bike.yaw - m_camYaw);
-        float t = 1.0f - std::exp(-m_camFollowYawSmooth * dt);
-        m_camYaw += diff * t;
-    }
 
     float tz = 1.0f - std::exp(-m_camSmooth * dt);
     m_camDistanceCur += (m_camDistance - m_camDistanceCur) * tz;
@@ -277,28 +261,18 @@ void GameProcess::setupView()
     float sp = std::sin(m_camPitch);
 
     QVector3D offset(
-        m_camDistanceCur * sy * cp,
-        m_camDistanceCur * -sp,
-        m_camDistanceCur * -cy * cp
+        m_camDistanceCur * sy * cp,               
+        -m_camDistanceCur * sp,                   
+        m_camDistanceCur * cy * cp                
     );
 
-    QVector3D eye = m_camTarget + offset;
+    QVector3D eye    = m_camTarget + offset;
     QVector3D center = m_camTarget;
     QVector3D up(0.0f, 1.0f, 0.0f);
 
-    QVector3D f = (center - eye).normalized();
-    QVector3D s = QVector3D::crossProduct(f, up).normalized();
-    QVector3D u = QVector3D::crossProduct(s, f);
-
     QMatrix4x4 view;
     view.setToIdentity();
-    view(0,0) =  s.x(); view(0,1) =  u.x(); view(0,2) = -f.x(); view(0,3) = 0.0f;
-    view(1,0) =  s.y(); view(1,1) =  u.y(); view(1,2) = -f.y(); view(1,3) = 0.0f;
-    view(2,0) =  s.z(); view(2,1) =  u.z(); view(2,2) = -f.z(); view(2,3) = 0.0f;
-    view(3,0) = -QVector3D::dotProduct(s, eye);
-    view(3,1) = -QVector3D::dotProduct(u, eye);
-    view(3,2) =  QVector3D::dotProduct(f, eye);
-    view(3,3) = 1.0f;
+    view.lookAt(eye, center, up);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(view.constData());
@@ -307,7 +281,6 @@ void GameProcess::setupView()
 void GameProcess::drawScene3D()
 {
     drawGroundGrid();
-
     drawBike();
 }
 
@@ -318,10 +291,10 @@ void GameProcess::drawGroundGrid()
     glDisable(GL_TEXTURE_2D);
     glBegin(GL_QUADS);
     glColor3f(0.02f, 0.02f, 0.06f);
-    glVertex3f(-half, 0.0f, -half);
-    glVertex3f(+half, 0.0f, -half);
-    glVertex3f(+half, 0.0f, +half);
-    glVertex3f(-half, 0.0f, +half);
+    glVertex3f(-half, -0.5f, -half);
+    glVertex3f(+half, -0.5f, -half);
+    glVertex3f(+half, -0.5f, +half);
+    glVertex3f(-half, -0.5f, +half);
     glEnd();
 
     glLineWidth(1.0f);
@@ -331,10 +304,11 @@ void GameProcess::drawGroundGrid()
     for (int i = 0; i <= m_gridSize; ++i) {
         float p = (static_cast<float>(i) * m_cellSize) - half;
 
-        glVertex3f(-half, 0.01f, p);
-        glVertex3f(+half, 0.01f, p);
-        glVertex3f(p, 0.01f, -half);
-        glVertex3f(p, 0.01f, +half);
+        glVertex3f(-half, -0.49f, p);
+        glVertex3f(+half, -0.49f, p);
+
+        glVertex3f(p, -0.49f, -half);
+        glVertex3f(p, -0.49f, +half);
     }
 
     glEnd();
@@ -349,9 +323,10 @@ void GameProcess::drawBike()
     glRotatef(qRadiansToDegrees(m_bike.yaw), 0.0f, 1.0f, 0.0f);
     glRotatef(qRadiansToDegrees(m_bike.lean), 0.0f, 0.0f, 1.0f);
 
-    float L = 2.5f;
-    float W = 1.0f;
-    float H = 1.2f;
+    float S = 1.6f;   
+    float L = S;
+    float W = S;
+    float H = S;
 
     float x0 = -W * 0.5f, x1 = +W * 0.5f;
     float y0 = 0.0f,      y1 = H;
@@ -394,7 +369,6 @@ void GameProcess::drawBike()
 
     glPopMatrix();
 }
-
 
 float GameProcess::clampf(float v, float lo, float hi)
 {

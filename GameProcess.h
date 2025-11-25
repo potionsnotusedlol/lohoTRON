@@ -2,6 +2,8 @@
 #define GAMEPROCESS_H
 
 #include <memory>
+#include <algorithm>
+#include <cmath>
 
 #include <Ogre.h>
 #include <QOpenGLWidget>
@@ -31,6 +33,7 @@ protected:
 
     void keyPressEvent(QKeyEvent* event) override;
     void keyReleaseEvent(QKeyEvent* event) override;
+
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -40,7 +43,7 @@ private slots:
 
 private:
     struct Bike {
-        QVector3D pos;
+        QVector3D pos;   
         float     yaw;   
         float     speed; 
         float     lean;  
@@ -49,12 +52,11 @@ private:
     void updateSimulation(float dt);
     void updateCamera(float dt);
 
+    void setupProjection();
+    void setupView();
     void drawScene3D();
     void drawGroundGrid();
     void drawBike();
-
-    void setupProjection();
-    void setupView();
 
     static float clampf(float v, float lo, float hi);
     static float lerpf(float a, float b, float t);
@@ -62,24 +64,25 @@ private:
 
 private:
     std::unique_ptr<Ogre::Root> m_root;
-    Ogre::SceneManager*  m_scene_manager  = nullptr;
-    Ogre::RenderWindow*  m_render_window  = nullptr;
+    Ogre::SceneManager* m_scene_manager = nullptr;
+    Ogre::RenderWindow* m_render_window = nullptr;
 
-    int   m_fieldSize   = 10;   
-    int   m_gridSize    = 10;   
-    float m_cellSize    = 2.0f; 
+    int   m_fieldSize   = 10;
+    int   m_gridSize    = 10;
+    float m_cellSize    = 2.0f;
     float m_mapHalfSize = 10.0f;
 
     bool  m_paused = false;
 
     Bike  m_bike;
 
-    float     m_camYaw   = 0.0f;
-    float     m_camPitch = -0.35f;
-    float     m_camDistance    = 8.0f;
-    float     m_camDistanceCur = 8.0f;
-    float     m_camTargetHeight    = 2.0f;
-    float     m_camSmooth          = 12.0f;
+    float     m_camYaw         = 0.0f;
+    float     m_camPitch       = -0.6f;
+    float     m_camDistance    = 14.0f;
+    float     m_camDistanceCur = 14.0f;
+    float     m_camTargetHeight   = 2.0f;
+    float     m_camSmooth         = 10.0f;
+
     float     m_camFollowYawSmooth = 8.0f;
     QVector3D m_camTarget;
 
@@ -106,4 +109,4 @@ private:
     QTimer*       m_tickTimer  = nullptr;
 };
 
-#endif // GAMEPROCESS_H
+#endif // GAMEPROCESS_G
