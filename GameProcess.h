@@ -17,6 +17,9 @@ public:
 
     void setFieldSize(int n);
 
+signals:
+    void gameStartRequested(int fieldSize, int botCount);
+
 protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;

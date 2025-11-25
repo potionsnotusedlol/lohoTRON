@@ -17,9 +17,9 @@ public slots:
     void startGame(int fieldSize, int botsCount);
 
 private:
-    QStackedWidget* stacked          = nullptr;
-    MainMenuWidget* menu             = nullptr;
-    GameProcess*    game_proc_window = nullptr;
+    QStackedWidget* stacked;
+    MainMenuWidget* menu;
+    GameProcess*    game_proc_window;
 };
 
 #endif // MAINWINDOW_H
