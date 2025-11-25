@@ -1,4 +1,5 @@
 #include "GameStartWindow.h"
+#include "mainwindow.h"
 
 namespace {
 
@@ -178,6 +179,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     bots_change_layout->addWidget(less_bots_button, 0, Qt::AlignCenter);
     layout->addWidget(start_game_button, 0, Qt::AlignCenter);
     layout->addWidget(cancel_game_button, 0, Qt::AlignLeft);
+
     game_set_label->setStyleSheet(
         "font-size: 84pt;"
         "border: none;"
@@ -340,6 +342,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     start_game_glow->setBlurRadius(36);
     start_game_glow->setColor(qRgb(0, 255, 255));
     start_game_glow->setOffset(0, 0);
+
     game_set_label->setGraphicsEffect(top_label_glow);
     rounds_hint->setGraphicsEffect(rounds_hint_glow);
     more_rounds_button->setGraphicsEffect(more_rounds_glow);
@@ -348,6 +351,40 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     more_bots_button->setGraphicsEffect(more_bots_glow);
     less_bots_button->setGraphicsEffect(less_bots_glow);
     start_game_button->setGraphicsEffect(start_game_glow);
+
+    connect(start_game_button, &QPushButton::clicked, this,
+        [this, rounds_count, bots_count]() {
+            bool ok1 = false, ok2 = false;
+            int rounds = rounds_count->text().toInt(&ok1);
+            int bots   = bots_count->text().toInt(&ok2);
+
+            if (!ok1) rounds = g_currentFieldSize;
+            if (!ok2) bots   = g_currentBotsCount;
+
+            g_currentFieldSize = rounds;
+            g_currentBotsCount = bots;
+
+            QWidget* w = parentWidget();
+            while (w && qobject_cast<mainwindow*>(w) == nullptr) {
+                w = w->parentWidget();
+            }
+            if (auto* mw = qobject_cast<mainwindow*>(w)) {
+                mw->startGame(rounds, bots);
+            }
+
+            if (!closing) {
+                closing = true;
+                auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+                fade_out->setDuration(300);
+                fade_out->setStartValue(windowOpacity());
+                fade_out->setEndValue(0.0);
+
+                connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
+
+                fade_out->start(QAbstractAnimation::DeleteWhenStopped);
+            }
+        }
+    );
 
     connect(more_rounds_button, &QPushButton::clicked, this,
             [rounds_count, fieldSizeMin, fieldSizeMax]() {
