@@ -13,6 +13,13 @@
 #include <QAbstractAnimation>
 #include <QWidget>
 #include <QRect>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QJsonParseError>
+#include <QIntValidator>
+
 
 class GameStartWindow : public QDialog {
     Q_OBJECT

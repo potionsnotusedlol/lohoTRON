@@ -1,8 +1,121 @@
 #include "GameStartWindow.h"
 
+namespace {
+
+struct GameDefaults {
+    int fieldSizeDefault = 10;
+    int fieldSizeMin     = 5;
+    int fieldSizeMax     = 20;
+
+    int botsDefault      = 1;
+    int botsMin          = 0;
+    int botsMax          = 4;
+};
+
+QString configFilePath()
+{
+    return QCoreApplication::applicationDirPath() + "/game_config.json";
+}
+
+void writeDefaultConfig(const GameDefaults& cfg)
+{
+    QJsonObject fieldObj;
+    fieldObj["size_default"] = cfg.fieldSizeDefault;
+    fieldObj["size_min"]     = cfg.fieldSizeMin;
+    fieldObj["size_max"]     = cfg.fieldSizeMax;
+
+    QJsonObject botsObj;
+    botsObj["count_default"] = cfg.botsDefault;
+    botsObj["count_min"]     = cfg.botsMin;
+    botsObj["count_max"]     = cfg.botsMax;
+
+    QJsonObject gameObj;
+    gameObj["field"] = fieldObj;
+    gameObj["bots"]  = botsObj;
+
+    QJsonObject root;
+    root["game"] = gameObj;
+
+    QJsonDocument doc(root);
+
+    QFile file(configFilePath());
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        file.write(doc.toJson(QJsonDocument::Indented));
+        file.close();
+    }
+}
+
+GameDefaults loadGameDefaults()
+{
+    GameDefaults cfg;
+    const QString path = configFilePath();
+
+    QFile file(path);
+
+    if (!file.exists()) {
+        writeDefaultConfig(cfg);
+        return cfg;
+    }
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return cfg;
+    }
+
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
+    file.close();
+
+    if (error.error != QJsonParseError::NoError || !doc.isObject()) {
+        writeDefaultConfig(cfg);
+        return cfg;
+    }
+
+    const QJsonObject root  = doc.object();
+    const QJsonObject game  = root.value("game").toObject();
+    const QJsonObject field = game.value("field").toObject();
+    const QJsonObject bots  = game.value("bots").toObject();
+
+    if (!field.isEmpty()) {
+        cfg.fieldSizeDefault = field.value("size_default").toInt(cfg.fieldSizeDefault);
+        cfg.fieldSizeMin     = field.value("size_min").toInt(cfg.fieldSizeMin);
+        cfg.fieldSizeMax     = field.value("size_max").toInt(cfg.fieldSizeMax);
+    }
+
+    if (!bots.isEmpty()) {
+        cfg.botsDefault = bots.value("count_default").toInt(cfg.botsDefault);
+        cfg.botsMin     = bots.value("count_min").toInt(cfg.botsMin);
+        cfg.botsMax     = bots.value("count_max").toInt(cfg.botsMax);
+    }
+
+    if (cfg.fieldSizeMin > cfg.fieldSizeMax)
+        cfg.fieldSizeMin = cfg.fieldSizeMax;
+    if (cfg.fieldSizeDefault < cfg.fieldSizeMin)
+        cfg.fieldSizeDefault = cfg.fieldSizeMin;
+    else if (cfg.fieldSizeDefault > cfg.fieldSizeMax)
+        cfg.fieldSizeDefault = cfg.fieldSizeMax;
+
+    if (cfg.botsMin > cfg.botsMax)
+        cfg.botsMin = cfg.botsMax;
+    if (cfg.botsDefault < cfg.botsMin)
+        cfg.botsDefault = cfg.botsMin;
+    else if (cfg.botsDefault > cfg.botsMax)
+        cfg.botsDefault = cfg.botsMax;
+
+    return cfg;
+}
+
+}
+
+
 // check comments in SettingsWindow.cpp
 GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
+
+    const GameDefaults defaults = loadGameDefaults();
+    const int fieldSizeMin = defaults.fieldSizeMin;
+    const int fieldSizeMax = defaults.fieldSizeMax;
+    const int botsMin      = defaults.botsMin;
+    const int botsMax      = defaults.botsMax;
 
     setWindowOpacity(0.0);
     setWindowTitle("Start New Game");
@@ -158,6 +271,15 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "background: transparent;"
     );
 
+    rounds_count->setAlignment(Qt::AlignCenter);
+    bots_count->setAlignment(Qt::AlignCenter);
+
+    rounds_count->setValidator(new QIntValidator(fieldSizeMin, fieldSizeMax, rounds_count));
+    bots_count->setValidator(new QIntValidator(botsMin, botsMax, bots_count));
+
+    rounds_count->setText(QString::number(defaults.fieldSizeDefault));
+    bots_count->setText(QString::number(defaults.botsDefault));
+
     auto top_label_glow = new QGraphicsDropShadowEffect(game_set_label);
 
     top_label_glow->setBlurRadius(24);
@@ -213,6 +335,63 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     more_bots_button->setGraphicsEffect(more_bots_glow);
     less_bots_button->setGraphicsEffect(less_bots_glow);
     start_game_button->setGraphicsEffect(start_game_glow);
+
+      connect(more_rounds_button, &QPushButton::clicked, this,
+            [rounds_count, fieldSizeMin, fieldSizeMax]() {
+        bool ok = false;
+        int value = rounds_count->text().toInt(&ok);
+        if (!ok) {
+            value = fieldSizeMin;
+        }
+
+        if (value < fieldSizeMax) {
+            ++value;
+            rounds_count->setText(QString::number(value));
+        }
+    });
+
+    connect(less_rounds_button, &QPushButton::clicked, this,
+            [rounds_count, fieldSizeMin, fieldSizeMax]() {
+        bool ok = false;
+        int value = rounds_count->text().toInt(&ok);
+        if (!ok) {
+            value = fieldSizeMin;
+        }
+
+        if (value > fieldSizeMin) {
+            --value;
+            rounds_count->setText(QString::number(value));
+        }
+    });
+
+
+    connect(more_bots_button, &QPushButton::clicked, this,
+            [bots_count, botsMin, botsMax]() {
+        bool ok = false;
+        int bots = bots_count->text().toInt(&ok);
+        if (!ok) {
+            bots = botsMin;
+        }
+
+        if (bots < botsMax) {
+            ++bots;
+            bots_count->setText(QString::number(bots));
+        }
+    });
+
+    connect(less_bots_button, &QPushButton::clicked, this,
+            [bots_count, botsMin, botsMax]() {
+        bool ok = false;
+        int bots = bots_count->text().toInt(&ok);
+        if (!ok) {
+            bots = botsMin;
+        }
+
+        if (bots > botsMin) {
+            --bots;
+            bots_count->setText(QString::number(bots));
+        }
+    });
 
     connect(start_game_button, &QPushButton::clicked, this, [this]() {});
     connect(cancel_game_button, &QPushButton::clicked, this,
