@@ -166,21 +166,12 @@ void GameProcess::mouseReleaseEvent(QMouseEvent* event)
 void GameProcess::mouseMoveEvent(QMouseEvent* event)
 {
     if (m_rmbDown) {
-        QPoint delta = event->pos() - m_lastMousePos;
         m_lastMousePos = event->pos();
-
-        m_camYaw   -= delta.x() * m_mouseSensitivity;
-        m_camPitch -= delta.y() * m_mouseSensitivity;
-
-        float minPitch = -1.3f;
-        float maxPitch =  0.3f;
-        if (m_camPitch < minPitch) m_camPitch = minPitch;
-        if (m_camPitch > maxPitch) m_camPitch = maxPitch;
-
-        update();
     }
+
     QOpenGLWidget::mouseMoveEvent(event);
 }
+
 
 void GameProcess::onTick()
 {
@@ -242,21 +233,12 @@ void GameProcess::updateSimulation(float dt)
 
 void GameProcess::updateCamera(float dt)
 {
-    m_camTarget = m_bike.pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
-
-    if (!m_rmbDown) {
-        float diff = wrapPi(m_bike.yaw - m_camYaw);
-
-        const float followSpeed = 1.5f;
-
-        float t = std::min(1.0f, followSpeed * dt);
-
-        m_camYaw += diff * t;
-    }
-
     float tz = 1.0f - std::exp(-m_camSmooth * dt);
     m_camDistanceCur += (m_camDistance - m_camDistanceCur) * tz;
+
+    m_camTarget = m_bike.pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
 }
+
 
 
 void GameProcess::updateTrail(float /*dt*/)
@@ -292,28 +274,25 @@ void GameProcess::setupProjection()
 
 void GameProcess::setupView()
 {
-    float cy = std::cos(m_camYaw);
-    float sy = std::sin(m_camYaw);
-    float cp = std::cos(m_camPitch);
-    float sp = std::sin(m_camPitch);
+    float cy = std::cos(m_bike.yaw);
+    float sy = std::sin(m_bike.yaw);
+    QVector3D forward(sy, 0.0f, -cy);
 
-    QVector3D offset(
-        m_camDistanceCur * sy * cp,     
-        -m_camDistanceCur * sp,         
-        m_camDistanceCur * cy * cp      
-    );
+    QVector3D target = m_bike.pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
 
-    QVector3D eye    = m_camTarget + offset;
-    QVector3D center = m_camTarget;
+    QVector3D eye = target - forward.normalized() * m_camDistanceCur
+                              + QVector3D(0.0f, 1.5f, 0.0f);
+
     QVector3D up(0.0f, 1.0f, 0.0f);
 
     QMatrix4x4 view;
     view.setToIdentity();
-    view.lookAt(eye, center, up);
+    view.lookAt(eye, target, up);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(view.constData());
 }
+
 
 void GameProcess::drawScene3D()
 {
