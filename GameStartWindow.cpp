@@ -104,18 +104,31 @@ GameDefaults loadGameDefaults()
     return cfg;
 }
 
+GameDefaults& defaults()
+{
+    static GameDefaults d = loadGameDefaults();
+    return d;
+}
+
+int g_currentFieldSize = -1;
+int g_currentBotsCount = -1;
+
 }
 
 
-// check comments in SettingsWindow.cpp
 GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
 
-    const GameDefaults defaults = loadGameDefaults();
-    const int fieldSizeMin = defaults.fieldSizeMin;
-    const int fieldSizeMax = defaults.fieldSizeMax;
-    const int botsMin      = defaults.botsMin;
-    const int botsMax      = defaults.botsMax;
+    const GameDefaults &defs = defaults();
+    const int fieldSizeMin = defs.fieldSizeMin;
+    const int fieldSizeMax = defs.fieldSizeMax;
+    const int botsMin      = defs.botsMin;
+    const int botsMax      = defs.botsMax;
+
+    if (g_currentFieldSize < 0)
+        g_currentFieldSize = defs.fieldSizeDefault;
+    if (g_currentBotsCount < 0)
+        g_currentBotsCount = defs.botsDefault;
 
     setWindowOpacity(0.0);
     setWindowTitle("Start New Game");
@@ -277,8 +290,8 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     rounds_count->setValidator(new QIntValidator(fieldSizeMin, fieldSizeMax, rounds_count));
     bots_count->setValidator(new QIntValidator(botsMin, botsMax, bots_count));
 
-    rounds_count->setText(QString::number(defaults.fieldSizeDefault));
-    bots_count->setText(QString::number(defaults.botsDefault));
+    rounds_count->setText(QString::number(g_currentFieldSize));
+    bots_count->setText(QString::number(g_currentBotsCount));
 
     auto top_label_glow = new QGraphicsDropShadowEffect(game_set_label);
 
@@ -336,7 +349,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     less_bots_button->setGraphicsEffect(less_bots_glow);
     start_game_button->setGraphicsEffect(start_game_glow);
 
-      connect(more_rounds_button, &QPushButton::clicked, this,
+    connect(more_rounds_button, &QPushButton::clicked, this,
             [rounds_count, fieldSizeMin, fieldSizeMax]() {
         bool ok = false;
         int value = rounds_count->text().toInt(&ok);
@@ -346,6 +359,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
 
         if (value < fieldSizeMax) {
             ++value;
+            g_currentFieldSize = value;
             rounds_count->setText(QString::number(value));
         }
     });
@@ -360,10 +374,10 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
 
         if (value > fieldSizeMin) {
             --value;
+            g_currentFieldSize = value;
             rounds_count->setText(QString::number(value));
         }
     });
-
 
     connect(more_bots_button, &QPushButton::clicked, this,
             [bots_count, botsMin, botsMax]() {
@@ -375,6 +389,7 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
 
         if (bots < botsMax) {
             ++bots;
+            g_currentBotsCount = bots;
             bots_count->setText(QString::number(bots));
         }
     });
@@ -389,11 +404,11 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
 
         if (bots > botsMin) {
             --bots;
+            g_currentBotsCount = bots;
             bots_count->setText(QString::number(bots));
         }
     });
 
-    connect(start_game_button, &QPushButton::clicked, this, [this]() {});
     connect(cancel_game_button, &QPushButton::clicked, this,
         [this]() {
             if (!closing) {

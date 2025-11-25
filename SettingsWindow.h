@@ -22,6 +22,7 @@
 #include <QCoreApplication>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <QJsonArray>
 
 class QKeyEvent;
 class SettingsWindow : public QDialog {

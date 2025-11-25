@@ -1,4 +1,5 @@
 #include "SettingsWindow.h"
+
 namespace {
 
 QString configFilePath()
@@ -50,7 +51,7 @@ void loadPlayerSettings(QLineEdit* nameEdit,
     const QString color = player.value("color").toString();
     if (!color.isEmpty()) {
         int idx = colorBox->findText(color, Qt::MatchFixedString);
-        if (idx == -1 && !color.isEmpty()) {
+        if (idx == -1) {
             colorBox->addItem(color);
             idx = colorBox->findText(color, Qt::MatchFixedString);
         }
@@ -60,11 +61,23 @@ void loadPlayerSettings(QLineEdit* nameEdit,
         colorBox->setCurrentIndex(0);
     }
 
+    QJsonArray keyArray = player.value("key_bindings").toArray();
+    if (!keyArray.isEmpty()) {
+        QStringList keys;
+        for (const QJsonValue &v : keyArray) {
+            const QString k = v.toString();
+            if (!k.isEmpty())
+                keys << k;
+        }
+        if (!keys.isEmpty()) {
+            keyButton->setText(keys.join(" / "));
+            return;
+        }
+    }
+
     const QString keyBind = player.value("key_binding").toString();
     if (!keyBind.isEmpty()) {
         keyButton->setText(keyBind);
-    } else {
-
     }
 }
 
@@ -217,7 +230,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     auto *rebind_button_glow = new QGraphicsDropShadowEffect(key_rebinding_button);
 
     rebind_button_glow->setBlurRadius(12);
-    rebind_button_glow->setColor(qRgb(192, 50, 33)); // asdas
+    rebind_button_glow->setColor(qRgb(192, 50, 33));
     rebind_button_glow->setOffset(0, 0);
     key_rebinding_button->setGraphicsEffect(rebind_button_glow);
     key_rebinding_button->setFixedWidth(settings_window_width * 0.5);
@@ -283,12 +296,8 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
         "background: transparent;"
     );
 
-    // загрузить сохранённые настройки игрока (если есть) в контролы
     loadPlayerSettings(player_name_input, color_picker_dropdown, key_rebinding_button);
 
-    // assigning bottom buttons their functionality
-
-    // сохранение имени, цвета и привязки клавиши в game_config.json
     connect(save_button, &QPushButton::clicked, this,
         [player_name_input, color_picker_dropdown, key_rebinding_button]() {
             QJsonObject root   = loadConfigRoot();
@@ -298,30 +307,53 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
             player["color"] = color_picker_dropdown->currentText();
 
             QString keyText = key_rebinding_button->text();
-            // системные подписи не считаем валидной комбинацией
-            if (keyText == "KEY\nBINDINGS" || keyText == "PRESS...")
-                keyText.clear();
-            player["key_binding"] = keyText;
+            QJsonArray keyArray;
+
+            if (!keyText.isEmpty() &&
+                keyText != "KEY\nBINDINGS" &&
+                !keyText.startsWith("PRESS")) {
+
+                QStringList parts = keyText.split(" / ", Qt::SkipEmptyParts);
+                for (const QString &p : parts) {
+                    const QString trimmed = p.trimmed();
+                    if (!trimmed.isEmpty())
+                        keyArray.append(trimmed);
+                }
+            }
+
+            if (!keyArray.isEmpty())
+                player["key_bindings"] = keyArray;
 
             root["player"] = player;
             saveConfigRoot(root);
         }
     );
 
-    // выбор клавиши при нажатии на кнопку KEY BINDINGS
     connect(key_rebinding_button, &QPushButton::clicked, this,
         [this, key_rebinding_button]() {
-            key_rebinding_button->setText("PRESS...");
-            QString seq = captureKeySequence(this);
-            if (seq.isEmpty()) {
+            QStringList keys;
+
+            for (int i = 0; i < 4; ++i) {
+                key_rebinding_button->setText(
+                    QString("PRESS %1/4").arg(i + 1)
+                );
+
+                QString seq = captureKeySequence(this);
+                if (seq.isEmpty()) {
+                    keys.clear();
+                    break;
+                }
+                keys << seq;
+            }
+
+            if (keys.isEmpty()) {
                 key_rebinding_button->setText("KEY\nBINDINGS");
             } else {
-                key_rebinding_button->setText(seq);
+                key_rebinding_button->setText(keys.join(" / "));
             }
         }
     );
 
-    // закрыть окно (как было)
     connect(close_settings_button, &QPushButton::clicked, this,
         [this]() {
             if (!closing) {      
@@ -341,13 +373,11 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     );
 }
 
-
 void SettingsWindow::keyPressEvent(QKeyEvent* event)
 {
     QDialog::keyPressEvent(event);
 }
 
-// opening fade in animation handler
 void SettingsWindow::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
     QWidget* win = window();
@@ -368,7 +398,6 @@ void SettingsWindow::showEvent(QShowEvent* event) {
     fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
-// closing fade out animation handler
 void SettingsWindow::closeEvent(QCloseEvent* event) {
     if (!closing) {
         event->ignore();

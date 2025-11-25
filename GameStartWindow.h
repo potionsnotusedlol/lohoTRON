@@ -19,7 +19,7 @@
 #include <QJsonValue>
 #include <QJsonParseError>
 #include <QIntValidator>
-
+#include <QCoreApplication>
 
 class GameStartWindow : public QDialog {
     Q_OBJECT
