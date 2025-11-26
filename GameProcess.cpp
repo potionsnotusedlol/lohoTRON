@@ -1,59 +1,123 @@
 #include "GameProcess.h"
-#include <QtMath>
-#include <GL/gl.h>
 
 GameProcess::GameProcess(QWidget* parent)
     : QOpenGLWidget(parent)
-    , m_fieldSize(100)
-    , m_gridSize(100)
-    , m_cellSize(2.0f)
-    , m_mapHalfSize(0.0f)
-    , m_keyForward(false)
-    , m_keyBackward(false)
-    , m_keyLeft(false)
-    , m_keyRight(false)
-    , m_maxForwardSpeed(14.0f)
-    , m_maxBackwardSpeed(8.0f)
-    , m_accel(18.0f)
-    , m_brake(35.0f)
-    , m_friction(10.0f)
-    , m_turnSpeed(2.0f)
-    , m_maxLean(qDegreesToRadians(35.0f))
-    , m_leanSpeed(8.0f)
-    , m_camYaw(0.0f)
-    , m_camPitch(-0.6f)
-    , m_camDistance(14.0f)
-    , m_camDistanceCur(14.0f)
-    , m_camSmooth(8.0f)
-    , m_camTargetHeight(2.0f)
-    , m_mouseSensitivity(0.0020f)
-    , m_mouseCaptured(false)
-    , m_trailTTL(5.0f)
-    , m_trailMinDist(0.3f)
-    , m_trailSize(0.8f)
-    , m_trailHeight(1.2f)
-    , m_lastTimeMs(0)
-    , m_time(0.0f)
-    , m_tickTimer(nullptr)
-    , m_paused(false)
 {
     setFocusPolicy(Qt::StrongFocus);
 
+    m_root.reset();
+    m_scene_manager = nullptr;
+    m_render_window = nullptr;
+
+    m_fieldSize   = 100;
+    m_gridSize    = m_fieldSize;
+    m_cellSize    = 2.0f;
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
 
-    m_bike.pos = QVector3D(0.0f, 0.0f, 0.0f);
-    m_bike.yaw = 0.0f;
-    m_bike.speed = 0.0f;
-    m_bike.lean = 0.0f;
+    m_paused = false;
 
-    m_camTarget = m_bike.pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
+    m_camYaw          = 0.0f;
+    m_camPitch        = -0.4f;
+    m_camDistance     = 12.0f;
+    m_camDistanceCur  = m_camDistance;
+    m_camTargetHeight = 3.0f;
+    m_camSmooth       = 8.0f;
+
+    m_camTarget = QVector3D(0.0f, m_camTargetHeight, 0.0f);
+
+    m_rmbDown        = false;
+    m_mouseCaptured  = false;
+    m_mouseSensitivity = 0.0018f;
+
+    m_keyForward  = false;
+    m_keyBackward = false;
+    m_keyLeft     = false;
+    m_keyRight    = false;
+
+    m_maxForwardSpeed  = 30.0f;
+    m_maxBackwardSpeed = 15.0f;
+    m_acceleration     = 40.0f;
+    m_brakeDecel       = 60.0f;
+    m_friction         = 18.0f;
+    m_turnSpeed        = 2.8f;
+    m_maxLeanAngle     = Ogre::Degree(38.0f).valueRadians();
+    m_leanSpeed        = 7.0f;
+
+    m_trailTTL          = 12.0f;
+    m_trailMinDist      = 0.35f;
+    m_trailColumnSize   = 0.8f;
+    m_trailColumnHeight = 3.0f;
+
+    m_time       = 0.0f;
+    m_lastTimeMs = 0;
+
+    m_bike.pos   = QVector3D(0.0f, 0.0f, 0.0f);
+    m_bike.yaw   = 0.0f;
+    m_bike.speed = 0.0f;
+    m_bike.lean  = 0.0f;
+    m_bike.color = QVector3D(0.0f, 0.8f, 1.0f);
+    m_bike.human = true;
+    m_bike.alive = true;
+    m_bike.prevPos = m_bike.pos;
+    m_bike.currPos = m_bike.pos;
+    m_bike.aiTurnTimer = 0.0f;
+    m_bike.aiTurnDir   = 0.0f;
+
+    m_bikes.clear();
+    m_bikeTrails.clear();
+
+    int botCount = 4;
+    int total = 1 + botCount;
+    m_bikes.resize(total);
+    m_bikeTrails.resize(total);
+
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+    QVector3D colors[5] = {
+        QVector3D(0.0f, 0.8f, 1.0f),
+        QVector3D(1.0f, 0.3f, 0.3f),
+        QVector3D(0.3f, 1.0f, 0.3f),
+        QVector3D(1.0f, 0.8f, 0.2f),
+        QVector3D(0.8f, 0.3f, 1.0f)
+    };
+
+    float spawnRadius = m_mapHalfSize * 0.6f;
+
+    for (int i = 0; i < total; ++i) {
+        Bike& b = m_bikes[i];
+
+        float angle = (static_cast<float>(i) / static_cast<float>(total)) * 2.0f * static_cast<float>(M_PI);
+        float x = std::cos(angle) * spawnRadius * 0.3f;
+        float z = std::sin(angle) * spawnRadius * 0.3f;
+
+        b.pos   = QVector3D(x, 0.0f, z);
+        b.yaw   = -angle + static_cast<float>(M_PI);
+        b.speed = 0.0f;
+        b.lean  = 0.0f;
+        b.color = colors[i % 5];
+        b.human = (i == 0);
+        b.alive = true;
+        b.prevPos = b.pos;
+        b.currPos = b.pos;
+        b.aiTurnTimer = 0.5f + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+        b.aiTurnDir   = 0.0f;
+
+        m_bikeTrails[i].clear();
+        TrailPoint tp;
+        tp.pos  = b.pos;
+        tp.time = m_time;
+        m_bikeTrails[i].push_back(tp);
+    }
+
+    if (!m_bikes.empty()) {
+        m_camTarget = m_bikes[0].pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
+    }
 
     m_timer.start();
     m_lastTimeMs = m_timer.elapsed();
-    m_time = 0.0f;
 
     m_tickTimer = new QTimer(this);
-    connect(m_tickTimer, &QTimer::timeout, this, &GameProcess::onTick);
+    connect(m_tickTimer, SIGNAL(timeout()), this, SLOT(onTick()));
     m_tickTimer->start(16);
 }
 
@@ -63,17 +127,9 @@ GameProcess::~GameProcess()
 
 void GameProcess::setFieldSize(int n)
 {
-    if (n < 2) n = 2;
-    m_fieldSize = n;
-    m_gridSize = n;
+    m_fieldSize   = std::max(10, n);
+    m_gridSize    = m_fieldSize;
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
-
-    m_bike.pos = QVector3D(0.0f, 0.0f, 0.0f);
-    m_bike.yaw = 0.0f;
-    m_bike.speed = 0.0f;
-    m_bike.lean = 0.0f;
-
-    m_trail.clear();
 }
 
 void GameProcess::initializeGL()
@@ -89,20 +145,25 @@ void GameProcess::initializeGL()
 
 void GameProcess::resizeGL(int w, int h)
 {
-    if (h == 0) h = 1;
     glViewport(0, 0, w, h);
 }
 
 void GameProcess::paintGL()
 {
+    if (!m_timer.isValid()) {
+        m_timer.start();
+        m_lastTimeMs = m_timer.elapsed();
+    }
+
     qint64 now = m_timer.elapsed();
-    float dt = static_cast<float>(now - m_lastTimeMs) / 1000.0f;
-    if (dt < 0.0f) dt = 0.0f;
-    if (dt > 0.1f) dt = 0.1f;
+    float dt = static_cast<float>(now - m_lastTimeMs) * 0.001f;
     m_lastTimeMs = now;
-    m_time += dt;
+
+    if (dt > 0.05f) dt = 0.05f;
+    if (dt < 0.0f) dt = 0.0f;
 
     if (!m_paused) {
+        m_time += dt;
         updateSimulation(dt);
         updateTrail(dt);
     } else {
@@ -116,10 +177,15 @@ void GameProcess::paintGL()
     drawScene3D();
 
     QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing);
-    if (m_paused) {
-        p.setPen(Qt::white);
-        p.drawText(rect(), Qt::AlignCenter, QStringLiteral("PAUSE"));
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(QPen(Qt::white));
+
+    if (!m_bikes.empty() && !m_bikes[0].alive) {
+        QFont f = p.font();
+        f.setPointSize(18);
+        f.setBold(true);
+        p.setFont(f);
+        p.drawText(rect(), Qt::AlignCenter, QStringLiteral("GAME OVER"));
     }
 }
 
@@ -192,6 +258,7 @@ void GameProcess::mousePressEvent(QMouseEvent* event)
 {
     m_mouseCaptured = true;
     m_lastMousePos = event->pos();
+
     QOpenGLWidget::mousePressEvent(event);
 }
 
@@ -213,7 +280,7 @@ void GameProcess::mouseMoveEvent(QMouseEvent* event)
         m_camPitch -= static_cast<float>(delta.y()) * m_mouseSensitivity;
 
         float minPitch = -1.2f;
-        float maxPitch = 0.3f;
+        float maxPitch = 0.35f;
         if (m_camPitch < minPitch) m_camPitch = minPitch;
         if (m_camPitch > maxPitch) m_camPitch = maxPitch;
     }
@@ -221,106 +288,179 @@ void GameProcess::mouseMoveEvent(QMouseEvent* event)
     QOpenGLWidget::mouseMoveEvent(event);
 }
 
-
-
 void GameProcess::onTick()
 {
     update();
 }
 
-
 void GameProcess::updateSimulation(float dt)
 {
     if (dt <= 0.0f) return;
 
-    static QVector3D vel(0.0f, 0.0f, 0.0f);
+    float bikeRadius = 0.9f;
+    float trailRadius = m_trailColumnSize * 0.5f;
 
-    QVector3D dir(0.0f, 0.0f, 0.0f);
-    if (m_keyForward)
-        dir.setZ(dir.z() - 1.0f);
-    if (m_keyBackward)
-        dir.setZ(dir.z() + 1.0f);
-    if (m_keyLeft)
-        dir.setX(dir.x() - 1.0f);
-    if (m_keyRight)
-        dir.setX(dir.x() + 1.0f);
+    for (int i = 0; i < static_cast<int>(m_bikes.size()); ++i) {
+        Bike& b = m_bikes[i];
+        if (!b.alive) continue;
 
-    if (!dir.isNull())
-        dir.normalize();
+        b.prevPos = b.pos;
 
-    QVector3D acc(0.0f, 0.0f, 0.0f);
-    if (!dir.isNull())
-        acc += dir * m_accel;
+        float forwardInput = 0.0f;
+        float turnInput = 0.0f;
 
-    vel += acc * dt;
+        if (b.human) {
+            if (m_keyForward)  forwardInput += 1.0f;
+            if (m_keyBackward) forwardInput -= 1.0f;
+            if (m_keyLeft)     turnInput += 1.0f;
+            if (m_keyRight)    turnInput -= 1.0f;
+        } else {
+            forwardInput = 1.0f;
+            b.aiTurnTimer -= dt;
+            if (b.aiTurnTimer <= 0.0f) {
+                b.aiTurnTimer = 0.7f + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 1.8f;
+                float r = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+                if (r < 0.33f) b.aiTurnDir = -1.0f;
+                else if (r > 0.66f) b.aiTurnDir = 1.0f;
+                else b.aiTurnDir = 0.0f;
+            }
+            turnInput = b.aiTurnDir;
+        }
 
-    float speed = vel.length();
-    float maxSpeed = m_maxForwardSpeed;
-    if (speed > maxSpeed && speed > 0.0f)
-        vel *= (maxSpeed / speed);
+        float acc = 0.0f;
+        if (forwardInput > 0.0f) {
+            acc += m_acceleration;
+        } else if (forwardInput < 0.0f) {
+            acc += (b.speed > 0.0f ? -m_brakeDecel : -m_acceleration);
+        }
 
-    if (dir.isNull() && speed > 0.0f) {
-        float decel = m_friction;
-        float dec = decel * dt;
-        if (dec >= speed)
-            vel = QVector3D(0.0f, 0.0f, 0.0f);
-        else
-            vel *= (1.0f - dec / speed);
-        speed = vel.length();
+        if (forwardInput != 0.0f) {
+            b.speed += acc * dt;
+        } else {
+            if (b.speed > 0.0f) {
+                b.speed -= m_friction * dt;
+                if (b.speed < 0.0f) b.speed = 0.0f;
+            } else if (b.speed < 0.0f) {
+                b.speed += m_friction * dt;
+                if (b.speed > 0.0f) b.speed = 0.0f;
+            }
+        }
+
+        b.speed = clampf(b.speed, -m_maxBackwardSpeed, m_maxForwardSpeed);
+
+        float speedNorm = std::min(1.0f, std::fabs(b.speed) / m_maxForwardSpeed);
+        float turnFactor = 0.3f + 0.7f * speedNorm;
+        float dirSign = (b.speed >= 0.0f ? 1.0f : -1.0f);
+        b.yaw += turnInput * m_turnSpeed * turnFactor * dt * dirSign;
+
+        float speedFactor = std::min(1.0f, std::fabs(b.speed) / m_maxForwardSpeed);
+        float targetLean = turnInput * m_maxLeanAngle * speedFactor;
+        float tLean = std::min(1.0f, m_leanSpeed * dt);
+        b.lean = lerpf(b.lean, targetLean, tLean);
+
+        float cy = std::cos(b.yaw);
+        float sy = std::sin(b.yaw);
+        QVector3D forward(sy, 0.0f, -cy);
+
+        QVector3D cand = b.pos + forward * (b.speed * dt);
+
+        float border = m_mapHalfSize - m_cellSize * 2.0f;
+        if (cand.x() > border)  cand.setX(border);
+        if (cand.x() < -border) cand.setX(-border);
+        if (cand.z() > border)  cand.setZ(border);
+        if (cand.z() < -border) cand.setZ(-border);
+
+        b.pos = cand;
+        b.currPos = b.pos;
+
+        std::vector<TrailPoint>& trail = m_bikeTrails[i];
+        if (trail.empty() || (b.pos - trail.back().pos).length() >= m_trailMinDist) {
+            TrailPoint tp;
+            tp.pos  = b.pos;
+            tp.time = m_time;
+            trail.push_back(tp);
+        }
     }
 
-    QVector3D newPos = m_bike.pos + vel * dt;
+    for (int i = 0; i < static_cast<int>(m_bikes.size()); ++i) {
+        Bike& a = m_bikes[i];
+        if (!a.alive) continue;
+        for (int j = i + 1; j < static_cast<int>(m_bikes.size()); ++j) {
+            Bike& b = m_bikes[j];
+            if (!b.alive) continue;
+            float dx = a.pos.x() - b.pos.x();
+            float dz = a.pos.z() - b.pos.z();
+            float d2 = dx * dx + dz * dz;
+            float r = bikeRadius * 2.0f;
+            if (d2 < r * r) {
+                a.alive = false;
+                b.alive = false;
+                a.speed = 0.0f;
+                b.speed = 0.0f;
+            }
+        }
+    }
 
-    float border = m_mapHalfSize - m_cellSize * 2.0f;
-    newPos.setX(clampf(newPos.x(), -border, border));
-    newPos.setZ(clampf(newPos.z(), -border, border));
-    m_bike.pos = newPos;
+    for (int i = 0; i < static_cast<int>(m_bikes.size()); ++i) {
+        Bike& b = m_bikes[i];
+        if (!b.alive) continue;
 
-    if (speed > 0.001f) {
-        float desiredYaw = std::atan2(vel.x(), -vel.z());
-        float diff = wrapAngle(desiredYaw - m_bike.yaw);
-        float maxTurn = 3.0f * dt;
-        if (diff >  maxTurn) diff =  maxTurn;
-        if (diff < -maxTurn) diff = -maxTurn;
-        m_bike.yaw = wrapAngle(m_bike.yaw + diff);
+        for (int owner = 0; owner < static_cast<int>(m_bikes.size()); ++owner) {
+            const std::vector<TrailPoint>& trail = m_bikeTrails[owner];
+            if (trail.empty()) continue;
+
+            for (size_t k = 0; k < trail.size(); ++k) {
+                const TrailPoint& tp = trail[k];
+                if (owner == i && (m_time - tp.time) < 0.3f) continue;
+
+                float dx = b.pos.x() - tp.pos.x();
+                float dz = b.pos.z() - tp.pos.z();
+                float d2 = dx * dx + dz * dz;
+                float r = bikeRadius + trailRadius;
+                if (d2 < r * r) {
+                    b.alive = false;
+                    b.speed = 0.0f;
+                    break;
+                }
+            }
+
+            if (!b.alive) break;
+        }
+    }
+
+    if (!m_bikes.empty() && !m_bikes[0].alive) {
+        m_paused = true;
     }
 
     updateCamera(dt);
 }
 
-
-
 void GameProcess::updateCamera(float dt)
 {
-    if (dt <= 0.0f) return;
+    if (m_bikes.empty()) return;
 
     float t = 1.0f - std::exp(-m_camSmooth * dt);
     if (t < 0.0f) t = 0.0f;
     if (t > 1.0f) t = 1.0f;
 
-    QVector3D desiredTarget = m_bike.pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
+    QVector3D desiredTarget = m_bikes[0].pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
     m_camTarget += (desiredTarget - m_camTarget) * t;
 
     m_camDistanceCur += (m_camDistance - m_camDistanceCur) * t;
 }
 
-
-
 void GameProcess::updateTrail(float dt)
 {
+    if (m_trailTTL <= 0.0f) return;
+
+    for (size_t i = 0; i < m_bikeTrails.size(); ++i) {
+        std::vector<TrailPoint>& trail = m_bikeTrails[i];
+        while (!trail.empty() && (m_time - trail.front().time) > m_trailTTL) {
+            trail.erase(trail.begin());
+        }
+    }
+
     Q_UNUSED(dt);
-
-    QVector3D basePos = m_bike.pos;
-    if (m_trail.empty() || (basePos - m_trail.back().pos).length() >= m_trailMinDist) {
-        TrailPoint tp;
-        tp.pos = basePos;
-        tp.t = m_time;
-        m_trail.push_back(tp);
-    }
-
-    while (!m_trail.empty() && (m_time - m_trail.front().t) > m_trailTTL) {
-        m_trail.erase(m_trail.begin());
-    }
 }
 
 void GameProcess::setupProjection()
@@ -341,7 +481,12 @@ void GameProcess::setupProjection()
 
 void GameProcess::setupView()
 {
-    float yaw = m_bike.yaw + m_camYaw;
+    if (m_bikes.empty()) return;
+
+    const Bike& player = m_bikes[0];
+
+    float baseYaw = player.yaw;
+    float yaw = baseYaw + m_camYaw;
 
     float cp = std::cos(m_camPitch);
     float sp = std::sin(m_camPitch);
@@ -361,16 +506,14 @@ void GameProcess::setupView()
     glLoadMatrixf(view.constData());
 }
 
-
 void GameProcess::drawScene3D()
 {
-    drawGround();
-    drawGrid();
+    drawGroundGrid();
     drawTrail();
     drawBike();
 }
 
-void GameProcess::drawGround()
+void GameProcess::drawGroundGrid()
 {
     float half = m_mapHalfSize;
 
@@ -382,11 +525,6 @@ void GameProcess::drawGround()
     glVertex3f(+half, -0.5f, +half);
     glVertex3f(-half, -0.5f, +half);
     glEnd();
-}
-
-void GameProcess::drawGrid()
-{
-    float half = m_mapHalfSize;
 
     glLineWidth(1.0f);
     glBegin(GL_LINES);
@@ -407,125 +545,153 @@ void GameProcess::drawGrid()
 
 void GameProcess::drawBike()
 {
-    glPushMatrix();
+    const float rad2deg = 180.0f / static_cast<float>(M_PI);
 
-    glTranslatef(m_bike.pos.x(), m_bike.pos.y(), m_bike.pos.z());
+    for (size_t i = 0; i < m_bikes.size(); ++i) {
+        const Bike& b = m_bikes[i];
+        if (!b.alive) continue;
 
-    float S = 1.6f;
-    float L = S;
-    float W = S;
-    float H = S;
+        glPushMatrix();
 
-    float x0 = -W * 0.5f;
-    float x1 = +W * 0.5f;
-    float y0 = 0.0f;
-    float y1 = H;
-    float z0 = -L * 0.5f;
-    float z1 = +L * 0.5f;
+        glTranslatef(b.pos.x(), b.pos.y(), b.pos.z());
 
-    glBegin(GL_QUADS);
-    glColor3f(0.0f, 0.8f, 1.0f);
+        glRotatef(b.yaw * rad2deg, 0.0f, 1.0f, 0.0f);
+        glRotatef(b.lean * rad2deg, 0.0f, 0.0f, 1.0f);
 
-    glVertex3f(x0, y0, z1);
-    glVertex3f(x1, y0, z1);
-    glVertex3f(x1, y1, z1);
-    glVertex3f(x0, y1, z1);
+        float L = 2.4f;
+        float W = 1.2f;
+        float H = 1.6f;
 
-    glVertex3f(x1, y0, z0);
-    glVertex3f(x0, y0, z0);
-    glVertex3f(x0, y1, z0);
-    glVertex3f(x1, y1, z0);
+        float x0 = -W * 0.5f;
+        float x1 = +W * 0.5f;
+        float y0 = 0.0f;
+        float y1 = H;
+        float z0 = -L * 0.5f;
+        float z1 = +L * 0.5f;
 
-    glVertex3f(x0, y0, z0);
-    glVertex3f(x0, y0, z1);
-    glVertex3f(x0, y1, z1);
-    glVertex3f(x0, y1, z0);
+        glBegin(GL_QUADS);
+        glColor3f(b.color.x(), b.color.y(), b.color.z());
 
-    glVertex3f(x1, y0, z1);
-    glVertex3f(x1, y0, z0);
-    glVertex3f(x1, y1, z0);
-    glVertex3f(x1, y1, z1);
+        glVertex3f(x0, y0, z1);
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x1, y1, z1);
+        glVertex3f(x0, y1, z1);
 
-    glVertex3f(x0, y1, z1);
-    glVertex3f(x1, y1, z1);
-    glVertex3f(x1, y1, z0);
-    glVertex3f(x0, y1, z0);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x0, y0, z0);
+        glVertex3f(x0, y1, z0);
+        glVertex3f(x1, y1, z0);
 
-    glVertex3f(x0, y0, z0);
-    glVertex3f(x1, y0, z0);
-    glVertex3f(x1, y0, z1);
-    glVertex3f(x0, y0, z1);
+        glVertex3f(x0, y0, z0);
+        glVertex3f(x0, y0, z1);
+        glVertex3f(x0, y1, z1);
+        glVertex3f(x0, y1, z0);
 
-    glEnd();
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x1, y1, z0);
+        glVertex3f(x1, y1, z1);
 
-    glPopMatrix();
+        glVertex3f(x0, y1, z1);
+        glVertex3f(x1, y1, z1);
+        glVertex3f(x1, y1, z0);
+        glVertex3f(x0, y1, z0);
+
+        glVertex3f(x0, y0, z0);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x0, y0, z1);
+
+        glEnd();
+
+        glPopMatrix();
+    }
 }
 
 void GameProcess::drawTrail()
 {
-    if (m_trail.empty())
-        return;
+    float rad2deg = 180.0f / static_cast<float>(M_PI);
+    Q_UNUSED(rad2deg);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
     glDisable(GL_CULL_FACE);
 
-    const float cubeHeight = 1.6f;
-    const float baseOffset = 0.05f;
-    const float columnHeight = cubeHeight * 0.75f;
+    for (size_t i = 0; i < m_bikes.size(); ++i) {
+        const Bike& b = m_bikes[i];
+        const std::vector<TrailPoint>& trail = m_bikeTrails[i];
+        if (trail.empty()) continue;
 
-    for (const TrailPoint& tp : m_trail) {
-        float age = m_time - tp.t;
-        if (age < 0.0f || age > m_trailTTL)
-            continue;
+        QVector3D col = b.color;
 
-        float alpha = clampf(1.0f - age / m_trailTTL, 0.0f, 1.0f);
+        for (size_t k = 0; k < trail.size(); ++k) {
+            const TrailPoint& tp = trail[k];
 
-        QVector3D base = tp.pos;
-        float halfSize = m_trailSize;
+            float age = m_time - tp.time;
+            if (age < 0.0f || age > m_trailTTL) continue;
 
-        float x0 = base.x() - halfSize;
-        float x1 = base.x() + halfSize;
-        float z0 = base.z() - halfSize;
-        float z1 = base.z() + halfSize;
-        float y0 = base.y() - baseOffset;
-        float y1 = y0 + columnHeight;
+            float alpha = 1.0f;
+            if (m_trailTTL > 0.0f) {
+                alpha = 1.0f - age / m_trailTTL;
+                if (alpha < 0.15f) alpha = 0.15f;
+                if (alpha > 1.0f) alpha = 1.0f;
+            }
 
-        glBegin(GL_QUADS);
-        glColor4f(0.0f, 0.9f, 1.2f, alpha);
+            QVector3D base = tp.pos;
+            float halfSize = m_trailColumnSize;
+            float h        = m_trailColumnHeight;
 
-        glVertex3f(x0, y0, z1);
-        glVertex3f(x1, y0, z1);
-        glVertex3f(x1, y1, z1);
-        glVertex3f(x0, y1, z1);
+            float x0 = base.x() - halfSize;
+            float x1 = base.x() + halfSize;
+            float z0 = base.z() - halfSize;
+            float z1 = base.z() + halfSize;
+            float y0 = base.y();
+            float y1 = base.y() + h;
 
-        glVertex3f(x1, y0, z0);
-        glVertex3f(x0, y0, z0);
-        glVertex3f(x0, y1, z0);
-        glVertex3f(x1, y1, z0);
+            glBegin(GL_QUADS);
+            glColor4f(col.x(), col.y(), col.z(), alpha);
 
-        glVertex3f(x0, y0, z0);
-        glVertex3f(x0, y0, z1);
-        glVertex3f(x0, y1, z1);
-        glVertex3f(x0, y1, z0);
+            glVertex3f(x0, y0, z1);
+            glVertex3f(x1, y0, z1);
+            glVertex3f(x1, y1, z1);
+            glVertex3f(x0, y1, z1);
 
-        glVertex3f(x1, y0, z1);
-        glVertex3f(x1, y0, z0);
-        glVertex3f(x1, y1, z0);
-        glVertex3f(x1, y1, z1);
+            glVertex3f(x1, y0, z0);
+            glVertex3f(x0, y0, z0);
+            glVertex3f(x0, y1, z0);
+            glVertex3f(x1, y1, z0);
 
-        glEnd();
+            glVertex3f(x0, y0, z0);
+            glVertex3f(x0, y0, z1);
+            glVertex3f(x0, y1, z1);
+            glVertex3f(x0, y1, z0);
+
+            glVertex3f(x1, y0, z1);
+            glVertex3f(x1, y0, z0);
+            glVertex3f(x1, y1, z0);
+            glVertex3f(x1, y1, z1);
+
+            glVertex3f(x0, y1, z1);
+            glVertex3f(x1, y1, z1);
+            glVertex3f(x1, y1, z0);
+            glVertex3f(x0, y1, z0);
+
+            glVertex3f(x0, y0, z0);
+            glVertex3f(x1, y0, z0);
+            glVertex3f(x1, y0, z1);
+            glVertex3f(x0, y0, z1);
+
+            glEnd();
+        }
     }
 
     glDisable(GL_BLEND);
     glEnable(GL_CULL_FACE);
 }
 
-float GameProcess::clampf(float v, float a, float b)
+float GameProcess::clampf(float v, float lo, float hi)
 {
-    if (v < a) v = a;
-    if (v > b) v = b;
-    return v;
+    return std::max(lo, std::min(hi, v));
 }
 
 float GameProcess::lerpf(float a, float b, float t)
@@ -533,10 +699,10 @@ float GameProcess::lerpf(float a, float b, float t)
     return a + (b - a) * t;
 }
 
-float GameProcess::wrapAngle(float a)
+float GameProcess::wrapPi(float a)
 {
     const float twoPi = 2.0f * static_cast<float>(M_PI);
     while (a <= -static_cast<float>(M_PI)) a += twoPi;
-    while (a >  static_cast<float>(M_PI)) a -= twoPi;
+    while (a >   static_cast<float>(M_PI)) a -= twoPi;
     return a;
 }
