@@ -2,90 +2,81 @@
 
 namespace {
 
-QString configFilePath()
-{
-    return QCoreApplication::applicationDirPath() + "/game_config.json";
-}
+QString configFilePath() { return QCoreApplication::applicationDirPath() + "/game_config.json"; }
 
-QJsonObject loadConfigRoot()
-{
+QJsonObject loadConfigRoot() {
     QFile file(configFilePath());
-    if (!file.exists())
-        return QJsonObject{};
 
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
-        return QJsonObject{};
+    if (!file.exists()) return QJsonObject{};
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return QJsonObject{};
 
     QJsonParseError error;
     QJsonDocument doc = QJsonDocument::fromJson(file.readAll(), &error);
-    if (error.error != QJsonParseError::NoError || !doc.isObject())
-        return QJsonObject{};
+
+    if (error.error != QJsonParseError::NoError || !doc.isObject()) return QJsonObject{};
 
     return doc.object();
 }
 
-void saveConfigRoot(const QJsonObject& root)
-{
+void saveConfigRoot(const QJsonObject& root) {
     QFile file(configFilePath());
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-        return;
+
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
 
     QJsonDocument doc(root);
+
     file.write(doc.toJson(QJsonDocument::Indented));
 }
 
-void loadPlayerSettings(QLineEdit* nameEdit,
-                        QComboBox* colorBox,
-                        QPushButton* keyButton)
-{
-    if (!nameEdit || !colorBox || !keyButton)
-        return;
+void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* keyButton) {
+    if (!nameEdit || !colorBox || !keyButton) return;
 
-    QJsonObject root   = loadConfigRoot();
-    QJsonObject player = root.value("player").toObject();
-
+    QJsonObject root   = loadConfigRoot(), player = root.value("player").toObject();
     const QString name = player.value("name").toString();
-    if (!name.isEmpty())
-        nameEdit->setText(name);
+
+    if (!name.isEmpty()) nameEdit->setText(name);
 
     const QString color = player.value("color").toString();
+
     if (!color.isEmpty()) {
         int idx = colorBox->findText(color, Qt::MatchFixedString);
+
         if (idx == -1) {
             colorBox->addItem(color);
             idx = colorBox->findText(color, Qt::MatchFixedString);
         }
-        if (idx != -1)
-            colorBox->setCurrentIndex(idx);
-    } else if (colorBox->count() > 0) {
-        colorBox->setCurrentIndex(0);
-    }
+
+        if (idx != -1) colorBox->setCurrentIndex(idx);
+    } else if (colorBox->count() > 0) colorBox->setCurrentIndex(0);
 
     QJsonArray keyArray = player.value("key_bindings").toArray();
+
     if (!keyArray.isEmpty()) {
         QStringList keys;
+
         for (const QJsonValue &v : keyArray) {
             const QString k = v.toString();
-            if (!k.isEmpty())
-                keys << k;
+
+            if (!k.isEmpty()) keys << k;
         }
+
         if (!keys.isEmpty()) {
             keyButton->setText(keys.join(" / "));
+
             return;
         }
     }
 
     const QString keyBind = player.value("key_binding").toString();
-    if (!keyBind.isEmpty()) {
-        keyButton->setText(keyBind);
-    }
+
+    if (!keyBind.isEmpty()) keyButton->setText(keyBind);
 }
 
+// rewrite to separate file and beautify
 class KeyCaptureDialog : public QDialog {
 public:
-    explicit KeyCaptureDialog(QWidget* parent = nullptr)
-        : QDialog(parent)
-    {
+    explicit KeyCaptureDialog(QWidget* parent = nullptr) : QDialog(parent) {
         setModal(true);
         setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
         setAttribute(Qt::WA_TranslucentBackground, true);
@@ -98,45 +89,38 @@ public:
     }
 
     QString sequence() const { return m_sequence; }
-
 protected:
-    void keyPressEvent(QKeyEvent* event) override
-    {
+    void keyPressEvent(QKeyEvent* event) override {
         if (event->key() == Qt::Key_Escape) {
             m_sequence.clear();
             reject();
+
             return;
         }
 
         int key = event->key();
-        if (key == Qt::Key_Shift ||
-            key == Qt::Key_Control ||
-            key == Qt::Key_Alt ||
-            key == Qt::Key_Meta ||
-            key == Qt::Key_AltGr) {
-            return;
-        }
+
+        if (key == Qt::Key_Shift || key == Qt::Key_Control || key == Qt::Key_Alt || key == Qt::Key_Meta || key == Qt::Key_AltGr) return;
 
         Qt::KeyboardModifiers mods = event->modifiers();
         QKeySequence seq(mods | key);
+
         m_sequence = seq.toString(QKeySequence::NativeText);
         accept();
     }
-
 private:
     QString m_sequence;
 };
 
-QString captureKeySequence(QWidget* parent)
-{
+QString captureKeySequence(QWidget* parent) {
     KeyCaptureDialog dlg(parent);
-    if (dlg.exec() == QDialog::Accepted)
-        return dlg.sequence();
+
+    if (dlg.exec() == QDialog::Accepted) return dlg.sequence();
+
     return QString{};
 }
 
 }
-
 
 SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);

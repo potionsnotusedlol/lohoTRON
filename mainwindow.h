@@ -10,12 +10,9 @@ class mainwindow : public QMainWindow {
     Q_OBJECT
 public:
     explicit mainwindow(QWidget * parent = nullptr);
-
 public slots:
     void showMenu();
-
     void startGame(int fieldSize, int botsCount);
-
 private:
     QStackedWidget* stacked;
     MainMenuWidget* menu;

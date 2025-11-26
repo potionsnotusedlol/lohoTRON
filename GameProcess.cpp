@@ -132,14 +132,11 @@ void GameProcess::setFieldSize(int n)
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
 }
 
-void GameProcess::initializeGL()
-{
+void GameProcess::initializeGL() {
     initializeOpenGLFunctions();
-
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
-
     glClearColor(0.0f, 0.0f, 0.03f, 1.0f);
 }
 
@@ -166,12 +163,9 @@ void GameProcess::paintGL()
         m_time += dt;
         updateSimulation(dt);
         updateTrail(dt);
-    } else {
-        updateCamera(dt);
-    }
+    } else updateCamera(dt);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     setupProjection();
     setupView();
     drawScene3D();
@@ -463,10 +457,9 @@ void GameProcess::updateTrail(float dt)
     Q_UNUSED(dt);
 }
 
-void GameProcess::setupProjection()
-{
-    int w = width();
-    int h = height();
+void GameProcess::setupProjection() {
+    int w = width(), h = height();
+
     if (h == 0) h = 1;
 
     float aspect = static_cast<float>(w) / static_cast<float>(h);
@@ -513,8 +506,7 @@ void GameProcess::drawScene3D()
     drawBike();
 }
 
-void GameProcess::drawGroundGrid()
-{
+void GameProcess::drawGroundGrid() {
     float half = m_mapHalfSize;
 
     glDisable(GL_TEXTURE_2D);
@@ -525,7 +517,6 @@ void GameProcess::drawGroundGrid()
     glVertex3f(+half, -0.5f, +half);
     glVertex3f(-half, -0.5f, +half);
     glEnd();
-
     glLineWidth(1.0f);
     glBegin(GL_LINES);
     glColor3f(0.0f, 0.6f, 1.0f);
@@ -535,7 +526,6 @@ void GameProcess::drawGroundGrid()
 
         glVertex3f(-half, -0.49f, p);
         glVertex3f(+half, -0.49f, p);
-
         glVertex3f(p, -0.49f, -half);
         glVertex3f(p, -0.49f, +half);
     }

@@ -47,14 +47,14 @@ CreatorsWindow::CreatorsWindow(QWidget* parent) : QDialog(parent) {
         creators_file.close();
 
         info_bar->setStyleSheet(
-        "font-size: 36pt;"
-        "font-family: \"Wattauchimma\";"
-        "color: rgb(235, 179, 169);"
-        "border: none;"
-        "background: transparent;"
-    );
+            "font-size: 36pt;"
+            "font-family: \"Wattauchimma\";"
+            "color: rgb(235, 179, 169);"
+            "border: none;"
+            "background: transparent;"
+        );
 
-    info_bar->setMarkdown(creators_content);
+        info_bar->setMarkdown(creators_content);
     }
     else {
         info_bar->setStyleSheet("color: rgb(192, 50, 33);");
