@@ -19,7 +19,8 @@
 #include <QPoint>
 #include <QMatrix4x4>
 
-class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
+class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions
+{
     Q_OBJECT
 public:
     explicit GameProcess(QWidget* parent = nullptr);
@@ -44,15 +45,15 @@ private slots:
 
 private:
     struct Bike {
-        QVector3D pos;   
-        float     yaw;   
-        float     speed; 
-        float     lean;  
+        QVector3D pos;
+        float yaw;
+        float speed;
+        float lean;
     };
 
     struct TrailPoint {
         QVector3D pos;
-        float     time;
+        float t;
     };
 
     void updateSimulation(float dt);
@@ -61,66 +62,62 @@ private:
 
     void setupProjection();
     void setupView();
+
     void drawScene3D();
-    void drawGroundGrid();
+    void drawGround();
+    void drawGrid();
     void drawBike();
     void drawTrail();
 
-    static float clampf(float v, float lo, float hi);
+    static float clampf(float v, float a, float b);
     static float lerpf(float a, float b, float t);
-    static float wrapPi(float a);
+    static float wrapAngle(float a);
 
-private:
-    std::unique_ptr<Ogre::Root> m_root;
-    Ogre::SceneManager*  m_scene_manager  = nullptr;
-    Ogre::RenderWindow*  m_render_window  = nullptr;
+    int m_fieldSize;
+    int m_gridSize;
+    float m_cellSize;
+    float m_mapHalfSize;
 
-    int   m_fieldSize   = 100;   
-    int   m_gridSize    = 100;
-    float m_cellSize    = 2.0f;  
-    float m_mapHalfSize = 100.0f; 
+    Bike m_bike;
 
-    bool  m_paused = false;
+    bool m_keyForward;
+    bool m_keyBackward;
+    bool m_keyLeft;
+    bool m_keyRight;
 
-    Bike  m_bike;
+    float m_maxForwardSpeed;
+    float m_maxBackwardSpeed;
+    float m_accel;
+    float m_brake;
+    float m_friction;
+    float m_turnSpeed;
+    float m_maxLean;
+    float m_leanSpeed;
 
-    float     m_camYaw         = 0.0f;   
-    float     m_camPitch       = -0.6f;  
-    float     m_camDistance    = 12.0f;  
-    float     m_camDistanceCur = 12.0f;  
-    float     m_camTargetHeight = 3.0f;  
-    float     m_camSmooth       = 6.0f;  
-
+    float m_camYaw;
+    float m_camPitch;
+    float m_camDistance;
+    float m_camDistanceCur;
+    float m_camSmooth;
+    float m_camTargetHeight;
     QVector3D m_camTarget;
 
-    bool   m_rmbDown = false;
+    float m_mouseSensitivity;
+    bool m_mouseCaptured;
     QPoint m_lastMousePos;
-    float  m_mouseSensitivity = 0.0015f;
-
-    bool m_keyForward  = false;
-    bool m_keyBackward = false;
-    bool m_keyLeft     = false;
-    bool m_keyRight    = false;
-
-    float m_maxForwardSpeed  = 20.0f;
-    float m_maxBackwardSpeed = 10.0f;
-    float m_acceleration     = 20.0f;
-    float m_brakeDecel       = 40.0f;
-    float m_friction         = 15.0f;
-    float m_turnSpeed        = 1.8f;  
-    float m_maxLeanAngle     = Ogre::Degree(35.0f).valueRadians();
-    float m_leanSpeed        = 6.0f;
 
     std::vector<TrailPoint> m_trail;
-    float  m_trailTTL          = 5.0f;   
-    float  m_trailMinDist      = 0.30f;  
-    float  m_trailColumnSize   = 0.8f;   
-    float  m_trailColumnHeight = 4.0f; 
+    float m_trailTTL;
+    float m_trailMinDist;
+    float m_trailSize;
+    float m_trailHeight;
 
     QElapsedTimer m_timer;
-    qint64        m_lastTimeMs = 0;
-    float         m_time       = 0.0f;
-    QTimer*       m_tickTimer  = nullptr;
+    qint64 m_lastTimeMs;
+    float m_time;
+
+    QTimer* m_tickTimer;
+    bool m_paused;
 };
 
 #endif // GAMEPROCESS_H
