@@ -9,7 +9,6 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets Gui OpenGLWidgets)
-find_package(OGRE REQUIRED)
 
 if(APPLE)
     set(OGRE_DIR "/opt/local/share/ogre/Cmake")
@@ -19,7 +18,18 @@ elseif(UNIX)
     set(OGRE_DIR "/usr/local/lib/cmake/OGRE")
     set(OGRE_PLUGIN_DIR "/usr/local/lib/OGRE")
     set(OGRE_MEDIA_DIR "/usr/local/share/OGRE/Media")
+    # ensuring OGRE can be found as a snap package 
+    find_package(OGRE)
+
+    if(NOT OGRE_FOUND)
+        set(OGRE_DIR "/snap/ogre/current/lib/OGRE/cmake")
+        set(OGRE_PLUGIN_DIR "/snap/ogre/current/lib/OGRE")
+        set(OGRE_MEDIA_DIR "/snap/ogre/current/share/OGRE-14.4/Media")
+        find_package(OGRE REQUIRED)
+    endif()
 endif()
+
+find_package(OGRE REQUIRED)
 
 # --- Source files ---
 set(SOURCES
