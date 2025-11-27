@@ -23,6 +23,7 @@
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <QJsonArray>
+#include "KeyCaptureDialog.h"
 
 class QKeyEvent;
 class SettingsWindow : public QDialog {
@@ -36,19 +37,22 @@ protected:
 private:
     QPropertyAnimation *fade_in_animation;
     bool closing = false;
-
-    QLineEdit*   player_name_input       = nullptr;
-    QComboBox*   color_picker_dropdown   = nullptr;
-    QPushButton* key_rebinding_button    = nullptr;
-
-    bool    capturingKey   = false;
+    QLineEdit* player_name_input = nullptr;
+    QComboBox* color_picker_dropdown = nullptr;
+    QPushButton* key_rebinding_button = nullptr;
+    bool capturingKey = false;
     QString keyBindingText;
 
     void loadSettingsFromConfig();
     void saveSettingsToConfig();
-
     void startKeyCapture();
     void stopKeyCapture();
 };
+
+QString configFilePath();
+QJsonObject loadConfigRoot();
+void saveConfigRoot(const QJsonObject& root);
+void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* keyButton);
+
 
 #endif // SETTINGSWINDOW_H

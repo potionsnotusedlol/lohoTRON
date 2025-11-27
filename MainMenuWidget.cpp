@@ -13,28 +13,24 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
     connect(ui->start_button, &QPushButton::clicked, this,
         [this]() {
             GameStartWindow game_dlg(this);
-
             game_dlg.exec();
         }
     );
     connect(ui->settings_button, &QPushButton::clicked, this,
         [this]() {
             SettingsWindow settings_dlg(this);
-
             settings_dlg.exec();
         }
     );
     connect(ui->creators_info_button, &QPushButton::clicked, this,
         [this]() {
             CreatorsWindow creators_dlg(this);
-
             creators_dlg.exec();
         }
     );
     connect(ui->quit_button, &QPushButton::clicked, this,
         [this]() {
             QuitGameWindow quit_dlg(this);
-
             quit_dlg.exec();
         }
     );

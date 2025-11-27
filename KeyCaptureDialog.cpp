@@ -1,10 +1,10 @@
-#include "CreatorsWindow.h"
+#include "KeyCaptureDialog.h"
 
-CreatorsWindow::CreatorsWindow(QWidget* parent) : QDialog(parent) {
+KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
     setWindowOpacity(0.0);
-    setWindowTitle("Creators");
-    resize(400, 300);
+    setWindowTitle("Rebind Keys");
+    resize(200, 150);
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
     setModal(true);
     setStyleSheet(
@@ -15,62 +15,33 @@ CreatorsWindow::CreatorsWindow(QWidget* parent) : QDialog(parent) {
         "font-family: \"Bolgarus Beta\";"
     );
 
+    QJsonObject root = loadConfigRoot();
+    QJsonObject player = root.value("player").toObject();
+    QJsonArray keys = player.value("key_bindings").toArray();
     auto *layout = new QVBoxLayout(this);
-    auto *creators_label = new QLabel("CREATORS");
-    auto *info_bar = new QTextEdit(this);
-    auto *close_creators_button = new QPushButton("CLOSE");
+    auto *forward_layout = new QHBoxLayout(this);
+    auto *forward_label = new QLabel("MOVE FORWARD");
+    auto key_assigned_forward = keys[0];
+    auto *forward_button = new QPushButton();
+    auto *cancel_rebinding_button = new QPushButton("CANCEL");
 
-    layout->addWidget(creators_label, 0, Qt::AlignCenter);
+    layout->addWidget(cancel_rebinding_button);
     layout->addStretch();
-    layout->addWidget(info_bar, 0, Qt::AlignCenter);
-    layout->addWidget(close_creators_button);
-    creators_label->setStyleSheet(
-        "font-size: 96px;"
+    layout->addLayout(forward_layout);
+    forward_layout->addWidget(forward_label, 0, Qt::AlignLeft);
+    forward_layout->addWidget(forward_button, 0, Qt::AlignRight);
+    cancel_rebinding_button->setStyleSheet(
+        "font-size: 40px;"
         "border: none;"
         "background: transparent;"
     );
-
-    int window_width = this->parentWidget()->width(), window_height = this->parentWidget()->height();
-
-    info_bar->setFixedWidth(window_width * 0.8);
-    info_bar->setFixedHeight(window_height * 0.5);
-    info_bar->setReadOnly(true);
-
-    QFile creators_file(":/creators_info.md");
-    
-    if (creators_file.open(QIODevice::ReadOnly | QIODevice::Text)){
-        QTextStream ifs(&creators_file);
-        QString creators_content = ifs.readAll();
-
-        creators_file.close();
-
-        info_bar->setStyleSheet(
-        "font-size: 36pt;"
-        "font-family: \"Wattauchimma\";"
-        "color: rgb(235, 179, 169);"
-        "border: none;"
-        "background: transparent;"
-        );
-
-        info_bar->setMarkdown(creators_content);
-    } else {
-        info_bar->setStyleSheet("color: rgb(192, 50, 33);");
-        info_bar->setText("FAILED TO LOAD CREATORS INFO!!");
-    }
-    
-    close_creators_button->setStyleSheet(
-        "font-size: 60pt;"
-        "font-family: \"FREE FAT FONT\";"
-        "border: none;"
-        "background: transparent;"
-    );
-    connect(close_creators_button, &QPushButton::clicked, this,
+    connect(cancel_rebinding_button, &QPushButton::clicked, this,
         [this]() {
             if (!closing) {
                 closing = true;
 
                 auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
-                
+
                 fade_out->setDuration(300);
                 fade_out->setStartValue(windowOpacity());
                 fade_out->setEndValue(0.0);
@@ -81,7 +52,7 @@ CreatorsWindow::CreatorsWindow(QWidget* parent) : QDialog(parent) {
     );
 }
 
-void CreatorsWindow::showEvent(QShowEvent* event) {
+void KeyCaptureDialog::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
     QWidget* win = window();
 
@@ -101,7 +72,7 @@ void CreatorsWindow::showEvent(QShowEvent* event) {
     fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
-void CreatorsWindow::closeEvent(QCloseEvent* event) {
+void KeyCaptureDialog::closeEvent(QCloseEvent* event) {
     if (!closing) {
         event->ignore();
         closing = true;
@@ -111,7 +82,7 @@ void CreatorsWindow::closeEvent(QCloseEvent* event) {
         fade_out->setDuration(300);
         fade_out->setStartValue(windowOpacity());
         fade_out->setEndValue(0.0);
-        connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close() ;});
+        connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
         fade_out->start(QAbstractAnimation::DeleteWhenStopped);
     } else QDialog::closeEvent(event);
 }
