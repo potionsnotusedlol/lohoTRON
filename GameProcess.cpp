@@ -238,12 +238,12 @@ void GameProcess::mouseMoveEvent(QMouseEvent* event) {
         float minPitch = -1.2f, maxPitch = 0.35f;
 
         if (m_camPitch < minPitch) m_camPitch = minPitch;
-
         if (m_camPitch > maxPitch) m_camPitch = maxPitch;
     }
 
     QOpenGLWidget::mouseMoveEvent(event);
 }
+
 
 void GameProcess::onTick() { update(); }
 
@@ -415,6 +415,9 @@ void GameProcess::setupView() {
     glLoadMatrixf(view.constData());
 }
 
+
+
+
 void GameProcess::drawScene3D() {
     drawGroundGrid();
     drawTrail();
@@ -534,87 +537,69 @@ void GameProcess::resetGame()
 
 
 void GameProcess::drawBike() {
-    const float rad2deg = 180.0f / static_cast<float>(M_PI);
-
     for (size_t i = 0; i < m_bikes.size(); ++i) {
         const Bike& b = m_bikes[i];
-
         if (!b.alive) continue;
 
         glPushMatrix();
 
         glTranslatef(b.pos.x(), b.pos.y(), b.pos.z());
 
-        glRotatef(b.yaw * rad2deg, 0.0f, 1.0f, 0.0f);
-
-        glRotatef(b.lean * rad2deg, 0.0f, 0.0f, 1.0f);
-
-        float L = 2.4f;  
-        float W = 1.2f;  
-        float H = 1.6f;  
+        float L = 2.4f;
+        float W = 1.2f;
+        float H = 1.6f;
 
         float x0 = -W * 0.5f;
         float x1 = +W * 0.5f;
         float y0 = 0.0f;
         float y1 = H;
-        float zFront = -L * 0.5f;  
-        float zBack  = +L * 0.5f;  
+        float z0 = -L * 0.5f;
+        float z1 = +L * 0.5f;
 
         glBegin(GL_QUADS);
 
         glColor3f(b.color.x(), b.color.y(), b.color.z());
-        glVertex3f(x0, y0, zFront);
-        glVertex3f(x1, y0, zFront);
-        glVertex3f(x1, y1, zFront);
-        glVertex3f(x0, y1, zFront);
+        glVertex3f(x0, y0, z1);
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x1, y1, z1);
+        glVertex3f(x0, y1, z1);
 
-        glColor3f(b.color.x() * 0.3f, b.color.y() * 0.3f, b.color.z() * 0.3f);
-        glVertex3f(x1, y0, zBack);
-        glVertex3f(x0, y0, zBack);
-        glVertex3f(x0, y1, zBack);
-        glVertex3f(x1, y1, zBack);
+        glColor3f(b.color.x() * 0.5f, b.color.y() * 0.5f, b.color.z() * 0.5f);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x0, y0, z0);
+        glVertex3f(x0, y1, z0);
+        glVertex3f(x1, y1, z0);
 
-        glColor3f(b.color.x() * 0.6f, b.color.y() * 0.6f, b.color.z() * 0.6f);
-        glVertex3f(x0, y0, zBack);
-        glVertex3f(x0, y0, zFront);
-        glVertex3f(x0, y1, zFront);
-        glVertex3f(x0, y1, zBack);
+        glColor3f(b.color.x() * 0.7f, b.color.y() * 0.7f, b.color.z() * 0.7f);
+        glVertex3f(x0, y0, z0);
+        glVertex3f(x0, y0, z1);
+        glVertex3f(x0, y1, z1);
+        glVertex3f(x0, y1, z0);
 
-        glVertex3f(x1, y0, zFront);
-        glVertex3f(x1, y0, zBack);
-        glVertex3f(x1, y1, zBack);
-        glVertex3f(x1, y1, zFront);
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x1, y1, z0);
+        glVertex3f(x1, y1, z1);
 
-        glColor3f(b.color.x() * 0.8f, b.color.y() * 0.8f, b.color.z() * 0.8f);
-        glVertex3f(x0, y1, zBack);
-        glVertex3f(x1, y1, zBack);
-        glVertex3f(x1, y1, zFront);
-        glVertex3f(x0, y1, zFront);
+        glColor3f(b.color.x(), b.color.y(), b.color.z());
+        glVertex3f(x0, y1, z0);
+        glVertex3f(x1, y1, z0);
+        glVertex3f(x1, y1, z1);
+        glVertex3f(x0, y1, z1);
 
         glColor3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(x0, y0, zBack);
-        glVertex3f(x1, y0, zBack);
-        glVertex3f(x1, y0, zFront);
-        glVertex3f(x0, y0, zFront);
+        glVertex3f(x0, y0, z0);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x0, y0, z1);
 
-        glEnd();
-
-        glBegin(GL_QUADS);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        float fx0 = x0 * 0.4f;
-        float fx1 = x1 * 0.4f;
-        float fy0 = y1 * 0.4f;
-        float fy1 = y1 * 0.8f;
-        float fz  = zFront - 0.01f;
-        glVertex3f(fx0, fy0, fz);
-        glVertex3f(fx1, fy0, fz);
-        glVertex3f(fx1, fy1, fz);
-        glVertex3f(fx0, fy1, fz);
         glEnd();
 
         glPopMatrix();
     }
 }
+
+
 
 
 
