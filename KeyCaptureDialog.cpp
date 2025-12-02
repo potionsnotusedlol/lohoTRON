@@ -16,24 +16,171 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
     );
 
     QJsonObject root = loadConfigRoot();
-    QJsonObject player = root.value("player").toObject();
-    QJsonArray keys = player.value("key_bindings").toArray();
     auto *layout = new QVBoxLayout(this);
     auto *forward_layout = new QHBoxLayout(this);
     auto *forward_label = new QLabel("MOVE FORWARD");
-    auto key_assigned_forward = keys[0];
+    QString key_assigned_forward, key_assigned_backward, key_assigned_left, key_assigned_right;
     auto *forward_button = new QPushButton();
+    auto *backward_layout = new QHBoxLayout(this);
+    auto *backward_label = new QLabel("MOVE BACKWARDS");
+    auto *backward_button = new QPushButton();
+    auto *left_layout = new QHBoxLayout(this);
+    auto *left_label = new QLabel("TURN LEFT");
+    auto *left_button = new QPushButton();
+    auto *right_layout = new QHBoxLayout(this);
+    auto *right_label = new QLabel("TURN RIGHT");
+    auto *right_button = new QPushButton();
     auto *cancel_rebinding_button = new QPushButton("CANCEL");
+    int rebind_window_width = this->width();
 
-    layout->addWidget(cancel_rebinding_button);
-    layout->addStretch();
+    if (root.isEmpty()) {
+        key_assigned_forward = "N/A";
+        key_assigned_backward = "N/A";
+        key_assigned_left = "N/A";
+        key_assigned_right = "N/A";
+    } else {
+        QJsonObject player = root.value("player").toObject();
+        QJsonArray keys = player.value("key_bindings").toArray();
+
+        if (!keys.isEmpty()) {
+            key_assigned_forward = keys[0].toString();
+            key_assigned_backward = keys[1].toString();
+            key_assigned_left = keys[2].toString();
+            key_assigned_right = keys[3].toString();
+        } else {
+            key_assigned_forward = "N/A";
+            key_assigned_backward = "N/A";
+            key_assigned_left = "N/A";
+            key_assigned_right = "N/A";
+        }
+    }
+
     layout->addLayout(forward_layout);
     forward_layout->addWidget(forward_label, 0, Qt::AlignLeft);
     forward_layout->addWidget(forward_button, 0, Qt::AlignRight);
+    layout->addLayout(backward_layout);
+    backward_layout->addWidget(backward_label, 0, Qt::AlignLeft);
+    backward_layout->addWidget(backward_button, 0, Qt::AlignRight);
+    layout->addLayout(left_layout);
+    left_layout->addWidget(left_label, 0, Qt::AlignLeft);
+    left_layout->addWidget(left_button, 0, Qt::AlignRight);
+    layout->addLayout(right_layout);
+    right_layout->addWidget(right_label, 0, Qt::AlignLeft);
+    right_layout->addWidget(right_button, 0, Qt::AlignRight);
+    layout->addStretch();
+    layout->addWidget(cancel_rebinding_button);
     cancel_rebinding_button->setStyleSheet(
         "font-size: 40px;"
         "border: none;"
         "background: transparent;"
+    );
+    forward_label->setStyleSheet(
+        "font-size: 20px;"
+        "font-family: \"TraktorMoodFont\";"
+        "color: rgb(242, 208, 164);"
+        "border: none;"
+        "background: transparent;"
+    );
+    forward_button->setStyleSheet(
+        "font-size: 20px;"
+        "font-family: \"Wattauchimma\";"
+        "color: rgb(192, 50, 113);"
+        "border: 3px solid rgb(242, 208, 164);"
+        "background: transparent; "       
+    );
+    forward_button->setFixedWidth(rebind_window_width * 0.25);
+    forward_button->setText(key_assigned_forward);
+    backward_label->setStyleSheet(
+        "font-size: 20px;"
+        "font-family: \"TraktorMoodFont\";"
+        "color: rgb(242, 208, 164);"
+        "border: none;"
+        "background: transparent;"
+    );
+    backward_button->setStyleSheet(
+        "font-size: 20px;"
+        "font-family: \"Wattauchimma\";"
+        "color: rgb(192, 50, 113);"
+        "border: 3px solid rgb(242, 208, 164);"
+        "background: transparent; "       
+    );
+    backward_button->setFixedWidth(rebind_window_width * 0.25);
+    backward_button->setText(key_assigned_backward);
+    left_label->setStyleSheet(
+        "font-size: 20px;"
+        "font-family: \"TraktorMoodFont\";"
+        "color: rgb(242, 208, 164);"
+        "border: none;"
+        "background: transparent;"
+    );
+    left_button->setStyleSheet(
+        "font-size: 20px;"
+        "font-family: \"Wattauchimma\";"
+        "color: rgb(192, 50, 113);"
+        "border: 3px solid rgb(242, 208, 164);"
+        "background: transparent; "       
+    );
+    left_button->setFixedWidth(rebind_window_width * 0.25);
+    left_button->setText(key_assigned_left);
+    right_label->setStyleSheet(
+        "font-size: 20px;"
+        "font-family: \"TraktorMoodFont\";"
+        "color: rgb(242, 208, 164);"
+        "border: none;"
+        "background: transparent;"
+    );
+    right_button->setStyleSheet(
+        "font-size: 20px;"
+        "font-family: \"Wattauchimma\";"
+        "color: rgb(192, 50, 113);"
+        "border: 3px solid rgb(242, 208, 164);"
+        "background: transparent; "       
+    );
+    right_button->setFixedWidth(rebind_window_width * 0.25);
+    right_button->setText(key_assigned_right);
+    connect(forward_button, &QPushButton::clicked, this,
+        [this, forward_button]() {
+            KeyCaptureProcess dlg(this);
+
+            if (dlg.exec() == QDialog::Accepted) {
+                int key = dlg.getKey();
+
+                forward_button->setText(QKeySequence(key).toString());
+            }
+        }    
+    );
+    connect(backward_button, &QPushButton::clicked, this,
+        [this, backward_button]() {
+            KeyCaptureProcess dlg(this);
+
+            if (dlg.exec() == QDialog::Accepted) {
+                int key = dlg.getKey();
+
+                backward_button->setText(QKeySequence(key).toString());
+            }
+        }      
+    );
+    connect(left_button, &QPushButton::clicked, this,
+        [this, left_button]() {
+            KeyCaptureProcess dlg(this);
+
+            if (dlg.exec() == QDialog::Accepted) {
+                int key = dlg.getKey();
+
+                left_button->setText(QKeySequence(key).toString());
+            }
+        }     
+    );
+    connect(right_button, &QPushButton::clicked, this,
+        [this, right_button]() {
+            KeyCaptureProcess dlg(this);
+
+            if (dlg.exec() == QDialog::Accepted) {
+                int key = dlg.getKey();
+
+                right_button->setText(QKeySequence(key).toString());
+            }
+        }      
     );
     connect(cancel_rebinding_button, &QPushButton::clicked, this,
         [this]() {
@@ -41,10 +188,10 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
                 closing = true;
 
                 auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
-
                 fade_out->setDuration(300);
                 fade_out->setStartValue(windowOpacity());
                 fade_out->setEndValue(0.0);
+
                 connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
                 fade_out->start(QAbstractAnimation::DeleteWhenStopped);
             }
@@ -78,10 +225,10 @@ void KeyCaptureDialog::closeEvent(QCloseEvent* event) {
         closing = true;
 
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
-
         fade_out->setDuration(300);
         fade_out->setStartValue(windowOpacity());
         fade_out->setEndValue(0.0);
+        
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
         fade_out->start(QAbstractAnimation::DeleteWhenStopped);
     } else QDialog::closeEvent(event);

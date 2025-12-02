@@ -43,6 +43,7 @@ set(SOURCES
     CreatorsWindow.cpp
     GameProcess.cpp
     KeyCaptureDialog.cpp
+    KeyCaptureProcess.cpp
     resources.qrc
 )
 
@@ -55,6 +56,7 @@ set(HEADERS
     CreatorsWindow.h
     GameProcess.h
     KeyCaptureDialog.h
+    KeyCaptureProcess.h
 )
 
 # --- Executable target ---

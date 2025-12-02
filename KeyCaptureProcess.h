@@ -1,5 +1,5 @@
-#ifndef KEYCAPTUREDIALOG_H
-#define KEYCAPTUREDIALOG_H
+#ifndef KEYCAPTUREPROCESS_H
+#define KEYCAPTUREPROCESS_H
 
 #include <QDialog>
 #include <QWidget>
@@ -9,25 +9,21 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QAbstractAnimation>
-#include <QFile>
 #include <QRect>
-#include <QHBoxLayout>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QString>
-#include "SettingsWindow.h"
-#include "KeyCaptureProcess.h"
 
-class KeyCaptureDialog : public QDialog {
+class KeyCaptureProcess : public QDialog {
     Q_OBJECT
 public:
-    explicit KeyCaptureDialog(QWidget* parent = nullptr);
+    explicit KeyCaptureProcess(QWidget* parent = nullptr);
+    int getKey() const;
 protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 private:
     QPropertyAnimation *fade_in_animation;
     bool closing = false;
+    long key_selected;
 };
 
-#endif // KEYCAPTUREDIALOG_H
+#endif // KEYCAPTUREPROCESS_H

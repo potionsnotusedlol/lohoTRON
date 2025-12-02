@@ -3,14 +3,10 @@
 QString configFilePath() { return QCoreApplication::applicationDirPath() + "/game_config.json"; }
 
 QJsonObject loadConfigRoot() {
-QJsonObject loadConfigRoot() {
     QFile file(configFilePath());
 
     if (!file.exists()) return QJsonObject{};
 
-    if (!file.exists()) return QJsonObject{};
-
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return QJsonObject{};
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) return QJsonObject{};
 
     QJsonParseError error;
@@ -18,16 +14,11 @@ QJsonObject loadConfigRoot() {
 
     if (error.error != QJsonParseError::NoError || !doc.isObject()) return QJsonObject{};
 
-    if (error.error != QJsonParseError::NoError || !doc.isObject()) return QJsonObject{};
-
     return doc.object();
 }
 
 void saveConfigRoot(const QJsonObject& root) {
-void saveConfigRoot(const QJsonObject& root) {
     QFile file(configFilePath());
-
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
 
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
 
@@ -38,8 +29,6 @@ void saveConfigRoot(const QJsonObject& root) {
 
 void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* keyButton) {
     if (!nameEdit || !colorBox || !keyButton) return;
-void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* keyButton) {
-    if (!nameEdit || !colorBox || !keyButton) return;
 
     QJsonObject root = loadConfigRoot();
     QJsonObject player = root.value("player").toObject();
@@ -47,10 +36,7 @@ void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* k
 
     if (!name.isEmpty()) nameEdit->setText(name);
 
-    if (!name.isEmpty()) nameEdit->setText(name);
-
     const QString color = player.value("color").toString();
-
 
     if (!color.isEmpty()) {
         int idx = colorBox->findText(color, Qt::MatchFixedString);
@@ -64,32 +50,25 @@ void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* k
         if (idx != -1) colorBox->setCurrentIndex(idx);
     } else if (colorBox->count() > 0) colorBox->setCurrentIndex(0);
 
-        if (idx != -1) colorBox->setCurrentIndex(idx);
-    } else if (colorBox->count() > 0) colorBox->setCurrentIndex(0);
-
     QJsonArray keyArray = player.value("key_bindings").toArray();
 
-
-    if (!keyArray.isEmpty()) {
-        QStringList keys;
-
-
-        for (const QJsonValue &v : keyArray) {
-            const QString k = v.toString();
-
-            if (!k.isEmpty()) keys << k;
-
-            if (!k.isEmpty()) keys << k;
-        }
+    // if (!keyArray.isEmpty()) {
+    //     QStringList keys;
 
 
-        if (!keys.isEmpty()) {
-            keyButton->setText(keys.join(" / "));
+    //     for (const QJsonValue &v : keyArray) {
+    //         const QString k = v.toString();
+
+    //         if (!k.isEmpty()) keys << k;
+    //     }
 
 
-            return;
-        }
-    }
+    //     if (!keys.isEmpty()) {
+    //         keyButton->setText(keys.join(" / "));
+
+    //         return;
+    //     }
+    // }
 
     const QString keyBind = player.value("key_binding").toString();
 
