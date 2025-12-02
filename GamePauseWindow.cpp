@@ -14,7 +14,6 @@ struct PauseSettings {
     QString hover_color = "rgb(92, 184, 128)";
 };
 
-
 PauseSettings loadPauseSettings() {
     PauseSettings settings;
     
@@ -23,6 +22,7 @@ PauseSettings loadPauseSettings() {
 
 PauseSettings& pauseSettings() {
     static PauseSettings s = loadPauseSettings();
+    
     return s;
 }
 

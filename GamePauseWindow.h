@@ -14,25 +14,20 @@
 #include <QJsonObject>
 #include <QCloseEvent>
 
-class GamePauseWindow : public QDialog
-{
+class GamePauseWindow : public QDialog {
     Q_OBJECT
-
 public:
     explicit GamePauseWindow(QWidget* parent = nullptr);
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
-
 signals:
     void resumeGame();
     void restartGame();
     void exitToMenu();
-
 private slots:
     void onResumeClicked();
     void onRestartClicked();
     void onExitClicked();
-
 private:
     void setupUI();
     void setupAnimations();
@@ -41,7 +36,6 @@ private:
 
     QPropertyAnimation* fade_in_animation;
     bool closing = false;
-
     // UI элементы
     QLabel* pause_label;
     QPushButton* resume_button;
