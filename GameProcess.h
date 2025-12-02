@@ -20,6 +20,7 @@
 #include <QVector3D>
 #include <QPoint>
 #include <QMatrix4x4>
+#include "GamePauseWindow.h"
 
 class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT

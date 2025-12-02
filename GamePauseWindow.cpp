@@ -114,11 +114,6 @@ void GamePauseWindow::applyStyles() {
     restart_button->setStyleSheet(button_style);
     exit_button->setStyleSheet(button_style);
     
-    // Выравнивание текста в кнопках
-    resume_button->setAlignment(Qt::AlignCenter);
-    restart_button->setAlignment(Qt::AlignCenter);
-    exit_button->setAlignment(Qt::AlignCenter);
-    
     // Эффекты свечения
     auto pause_label_glow = new QGraphicsDropShadowEffect(pause_label);
     pause_label_glow->setBlurRadius(30);

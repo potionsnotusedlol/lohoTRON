@@ -158,6 +158,9 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
         return;
     }
 
+    GamePauseWindow pause_dlg(this);
+
+
     switch (event->key()) {
     case Qt::Key_W:
     case Qt::Key_Up:
@@ -178,6 +181,9 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
     case Qt::Key_Space:
         m_paused = !m_paused;
         break;
+    case Qt::Key_Escape:
+        pause_dlg.exec();
+        break;
     default:
         break;
     }
@@ -192,6 +198,9 @@ void GameProcess::keyReleaseEvent(QKeyEvent* event)
 
         return;
     }
+
+    GamePauseWindow pause_dlg(this);
+
 
     switch (event->key()) {
     case Qt::Key_W:
@@ -209,6 +218,9 @@ void GameProcess::keyReleaseEvent(QKeyEvent* event)
     case Qt::Key_D:
     case Qt::Key_Right:
         m_keyRight = false;
+        break;
+    case Qt::Key_Escape:
+        pause_dlg.exec();
         break;
     default:
         break;

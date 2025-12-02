@@ -1,3 +1,6 @@
+#ifndef GAMEPAUSEWINDOW_H
+#define GAMEPAUSEWINDOW_H
+
 #include <QDialog>
 #include <QPropertyAnimation>
 #include <QVBoxLayout>
@@ -9,6 +12,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QCloseEvent>
 
 class GamePauseWindow : public QDialog
 {
@@ -44,3 +48,5 @@ private:
     QPushButton* restart_button;
     QPushButton* exit_button;
 };
+
+#endif // GAMEPAUSEWINDOW_H
