@@ -98,6 +98,14 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_tickTimer = new QTimer(this);
     connect(m_tickTimer, SIGNAL(timeout()), this, SLOT(onTick()));
     m_tickTimer->start(16);
+
+    m_pauseWindow = new GamePauseWindow(this);
+
+    connect(m_pauseWindow, &GamePauseWindow::resumeGame, this, &GameProcess::resumeGame);
+
+    connect(m_pauseWindow, &GamePauseWindow::exitToMenu, this, [this]() {
+    emit exitToMainMenu(); 
+});
 }
 
 GameProcess::~GameProcess() {}
@@ -158,7 +166,6 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
         return;
     }
 
-    GamePauseWindow pause_dlg(this);
 
 
     switch (event->key()) {
@@ -182,7 +189,10 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
         m_paused = !m_paused;
         break;
     case Qt::Key_Escape:
-        pause_dlg.exec();
+    m_paused = true;
+    m_pauseWindow->show();
+    m_pauseWindow->raise();
+    m_pauseWindow->activateWindow();
         break;
     default:
         break;
@@ -678,3 +688,16 @@ float GameProcess::wrapPi(float a) {
 
     return a;
 }
+
+void GameProcess::pauseGame() {
+    m_paused = true;
+}
+
+void GameProcess::resumeGame() {
+    m_paused = false;
+}
+
+bool GameProcess::isPaused() const {
+    return m_paused;
+}
+

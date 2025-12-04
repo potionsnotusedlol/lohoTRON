@@ -28,6 +28,11 @@ public:
     explicit GameProcess(QWidget* parent = nullptr);
     ~GameProcess() override;
     void setFieldSize(int n);
+    void pauseGame();
+    void resumeGame();
+    bool isPaused() const;
+signals:
+    void exitToMainMenu();
 protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
@@ -41,6 +46,7 @@ protected:
 private slots:
     void onTick();
 private:
+    GamePauseWindow* m_pauseWindow;
     struct TrailPoint {
         QVector3D pos;
         float     time;
