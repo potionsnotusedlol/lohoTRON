@@ -140,6 +140,24 @@ void GamePauseWindow::applyStyles() {
     exit_button->setGraphicsEffect(exit_glow);
 }
 
+void GamePauseWindow::closeByEsc() {
+    if (!closing) {
+        closing = true;
+
+        auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+        fade_out->setDuration(pauseSettings().animation_duration);
+        fade_out->setStartValue(windowOpacity());
+        fade_out->setEndValue(0.0);
+
+        connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
+            emit resumeGame();  
+            QDialog::close();
+        });
+
+        fade_out->start(QAbstractAnimation::DeleteWhenStopped);
+    }
+}
+
 void GamePauseWindow::setupConnections() {
     connect(resume_button, &QPushButton::clicked, this, &GamePauseWindow::onResumeClicked);
     connect(restart_button, &QPushButton::clicked, this, &GamePauseWindow::onRestartClicked);
@@ -149,7 +167,8 @@ void GamePauseWindow::setupConnections() {
 void GamePauseWindow::onResumeClicked() {
     if (!closing) {
         closing = true;
-        
+        emit resumeGame();
+
         // Анимация исчезания
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
         fade_out->setDuration(pauseSettings().animation_duration);
@@ -157,7 +176,7 @@ void GamePauseWindow::onResumeClicked() {
         fade_out->setEndValue(0.0);
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
-            emit resumeGame();
+            
             QDialog::close();
         });
         
@@ -168,7 +187,8 @@ void GamePauseWindow::onResumeClicked() {
 void GamePauseWindow::onRestartClicked() {
     if (!closing) {
         closing = true;
-        
+        emit restartGame();
+
         // Анимация исчезания
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
         fade_out->setDuration(pauseSettings().animation_duration);
@@ -176,7 +196,7 @@ void GamePauseWindow::onRestartClicked() {
         fade_out->setEndValue(0.0);
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
-            emit restartGame();
+            
             QDialog::close();
         });
         
@@ -187,7 +207,8 @@ void GamePauseWindow::onRestartClicked() {
 void GamePauseWindow::onExitClicked() {
     if (!closing) {
         closing = true;
-        
+        emit exitToMenu();
+
         // Анимация исчезания
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
         fade_out->setDuration(pauseSettings().animation_duration);
@@ -195,7 +216,7 @@ void GamePauseWindow::onExitClicked() {
         fade_out->setEndValue(0.0);
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
-            emit exitToMenu();
+    
             QDialog::close();
         });
         
@@ -205,23 +226,20 @@ void GamePauseWindow::onExitClicked() {
 
 void GamePauseWindow::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
-    
-    // Центрирование окна относительно родителя
+
     QWidget* win = window();
     if (win) {
         QRect g = win->geometry();
         move(g.center() - rect().center());
     }
-    
-    // Запуск анимации появления
+
     closing = false;
     fade_in_animation->stop();
-    fade_in_animation->setTargetObject(this);
-    fade_in_animation->setPropertyName("windowOpacity");
     fade_in_animation->setDuration(pauseSettings().animation_duration);
     fade_in_animation->setStartValue(0.0);
     fade_in_animation->setEndValue(1.0);
-    fade_in_animation->start(QAbstractAnimation::DeleteWhenStopped);
+
+    fade_in_animation->start(); 
 }
 
 void GamePauseWindow::closeEvent(QCloseEvent* event) {

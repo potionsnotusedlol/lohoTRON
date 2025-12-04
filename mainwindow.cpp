@@ -9,6 +9,8 @@ mainwindow::mainwindow(QWidget* parent) : QMainWindow(parent) {
     stacked->addWidget(game_proc_window);
     setCentralWidget(stacked);
     stacked->setCurrentWidget(menu);
+    connect(game_proc_window, &GameProcess::exitToMainMenu, this, &mainwindow::showMenu);
+
 }
 
 void mainwindow::showMenu() {

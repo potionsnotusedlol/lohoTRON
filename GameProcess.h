@@ -38,9 +38,13 @@ protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
-private slots:
-    void onTick();
-private:
+
+    GamePauseWindow* pauseWindow;
+    signals:
+        void exitToMainMenu();
+    private slots:
+        void onTick();
+    private:
     struct TrailPoint {
         QVector3D pos;
         float     time;

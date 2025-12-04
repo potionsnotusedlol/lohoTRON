@@ -52,6 +52,23 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_bikes.clear();
     m_bikeTrails.clear();
 
+
+    pauseWindow = new GamePauseWindow(this);
+
+    connect(pauseWindow, &GamePauseWindow::resumeGame, this, [this]() {
+        m_paused = false;
+    });
+
+    connect(pauseWindow, &GamePauseWindow::restartGame, this, [this]() {
+        resetGame();
+        m_paused = false;
+    });
+
+    connect(pauseWindow, &GamePauseWindow::exitToMenu, this, [this]() {
+        m_paused = false;
+        emit exitToMainMenu();
+    });
+
     int botCount = 4;
     int total = 1 + botCount;
 
@@ -158,7 +175,6 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
         return;
     }
 
-    GamePauseWindow pause_dlg(this);
 
 
     switch (event->key()) {
@@ -179,11 +195,15 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
         m_keyRight = true;
         break;
     case Qt::Key_Space:
-        m_paused = !m_paused;
-        break;
+    break;
     case Qt::Key_Escape:
-        pause_dlg.exec();
-        break;
+    if (pauseWindow->isVisible()) {
+        pauseWindow->closeByEsc();
+    } else {
+        m_paused = true;
+        pauseWindow->open();
+    }
+    break;
     default:
         break;
     }
