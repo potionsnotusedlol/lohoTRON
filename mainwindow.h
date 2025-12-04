@@ -13,7 +13,6 @@ public:
 public slots:
     void showMenu();
     void startGame(int fieldSize, int botsCount);
-    void onExitToMenu();
 private:
     QStackedWidget* stacked;
     MainMenuWidget* menu;
