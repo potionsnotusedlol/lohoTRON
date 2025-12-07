@@ -2,7 +2,6 @@
 
 namespace {
 
-// Структура для настроек окна паузы
 struct PauseSettings {
     int window_width = 400;
     int window_height = 450;
@@ -28,11 +27,8 @@ PauseSettings& pauseSettings() {
 
 }
 
-GamePauseWindow::GamePauseWindow(QWidget* parent) : QDialog(parent) {
-    // Инициализация анимации
-    fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
+GamePauseWindow::GamePauseWindow(QWidget* parent) : QDialog(parent) {    fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
     
-    // Настройка окна
     setupUI();
     applyStyles();
     setupConnections();
@@ -41,20 +37,17 @@ GamePauseWindow::GamePauseWindow(QWidget* parent) : QDialog(parent) {
 void GamePauseWindow::setupUI() {
     const PauseSettings &settings = pauseSettings();
     
-    // Основные настройки окна
-    setWindowOpacity(0.0); // Начальная прозрачность для анимации
+    setWindowOpacity(0.0); 
     setWindowTitle("Game Paused");
     resize(settings.window_width, settings.window_height);
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
     setModal(true);
     
-    // Создание виджетов
     pause_label = new QLabel("PAUSED", this);
     resume_button = new QPushButton("RESUME", this);
     restart_button = new QPushButton("RESTART", this);
     exit_button = new QPushButton("MAIN MENU", this);
     
-    // Основная компоновка
     auto *main_layout = new QVBoxLayout(this);
     main_layout->addWidget(pause_label, 0, Qt::AlignCenter);
     main_layout->addStretch();
@@ -63,7 +56,6 @@ void GamePauseWindow::setupUI() {
     main_layout->addWidget(exit_button, 0, Qt::AlignCenter);
     main_layout->addStretch();
     
-    // Настройка размеров кнопок
     int button_width = settings.window_width * 0.8;
     int button_height = settings.window_height * 0.12;
     
@@ -75,7 +67,6 @@ void GamePauseWindow::setupUI() {
 void GamePauseWindow::applyStyles() {
     const PauseSettings &settings = pauseSettings();
     
-    // Стиль основного окна
     setStyleSheet(
         QString(
             "background-color: %1;"
@@ -86,7 +77,6 @@ void GamePauseWindow::applyStyles() {
         ).arg(settings.background_color, settings.text_color, settings.border_color)
     );
     
-    // Стиль заголовка
     pause_label->setStyleSheet(
         "font-size: 96pt;"
         "border: none;"
@@ -94,7 +84,6 @@ void GamePauseWindow::applyStyles() {
         "margin-bottom: 30px;"
     );
     
-    // Общий стиль для кнопок
     QString button_style = QString(
         "QPushButton {"
             "font-size: 48pt;"
@@ -114,7 +103,6 @@ void GamePauseWindow::applyStyles() {
     restart_button->setStyleSheet(button_style);
     exit_button->setStyleSheet(button_style);
     
-    // Эффекты свечения
     auto pause_label_glow = new QGraphicsDropShadowEffect(pause_label);
     pause_label_glow->setBlurRadius(30);
     pause_label_glow->setColor(qRgb(0, 255, 255));
@@ -139,7 +127,6 @@ void GamePauseWindow::applyStyles() {
     exit_glow->setOffset(0, 0);
     exit_button->setGraphicsEffect(exit_glow);
 }
-
 void GamePauseWindow::closeByEsc() {
     if (!closing) {
         closing = true;
@@ -150,7 +137,7 @@ void GamePauseWindow::closeByEsc() {
         fade_out->setEndValue(0.0);
 
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
-            emit resumeGame();  
+            emit cancelPause();  
             QDialog::close();
         });
 
@@ -167,8 +154,7 @@ void GamePauseWindow::setupConnections() {
 void GamePauseWindow::onResumeClicked() {
     if (!closing) {
         closing = true;
-        emit resumeGame();
-
+        
         // Анимация исчезания
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
         fade_out->setDuration(pauseSettings().animation_duration);
@@ -176,7 +162,7 @@ void GamePauseWindow::onResumeClicked() {
         fade_out->setEndValue(0.0);
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
-            
+            emit resumeGame();
             QDialog::close();
         });
         
@@ -187,8 +173,7 @@ void GamePauseWindow::onResumeClicked() {
 void GamePauseWindow::onRestartClicked() {
     if (!closing) {
         closing = true;
-        emit restartGame();
-
+        
         // Анимация исчезания
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
         fade_out->setDuration(pauseSettings().animation_duration);
@@ -196,7 +181,7 @@ void GamePauseWindow::onRestartClicked() {
         fade_out->setEndValue(0.0);
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
-            
+            emit restartGame();
             QDialog::close();
         });
         
@@ -207,16 +192,14 @@ void GamePauseWindow::onRestartClicked() {
 void GamePauseWindow::onExitClicked() {
     if (!closing) {
         closing = true;
-        emit exitToMenu();
-
-        // Анимация исчезания
+        
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
         fade_out->setDuration(pauseSettings().animation_duration);
         fade_out->setStartValue(windowOpacity());
         fade_out->setEndValue(0.0);
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
-    
+            emit exitToMenu();
             QDialog::close();
         });
         
@@ -226,28 +209,26 @@ void GamePauseWindow::onExitClicked() {
 
 void GamePauseWindow::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
-
+    
     QWidget* win = window();
     if (win) {
         QRect g = win->geometry();
         move(g.center() - rect().center());
     }
-
+    
     closing = false;
     fade_in_animation->stop();
     fade_in_animation->setDuration(pauseSettings().animation_duration);
     fade_in_animation->setStartValue(0.0);
     fade_in_animation->setEndValue(1.0);
-
-    fade_in_animation->start(); 
+    fade_in_animation->start();
 }
 
 void GamePauseWindow::closeEvent(QCloseEvent* event) {
     if (!closing) {
-        event->ignore(); // Игнорируем прямое закрытие
+        event->ignore(); 
         closing = true;
         
-        // Анимация исчезания при закрытии
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
         fade_out->setDuration(pauseSettings().animation_duration);
         fade_out->setStartValue(windowOpacity());

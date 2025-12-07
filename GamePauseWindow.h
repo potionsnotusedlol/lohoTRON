@@ -24,7 +24,8 @@ signals:
     void resumeGame();
     void restartGame();
     void exitToMenu();
-public slots:
+    void cancelPause();
+    public slots:
     void closeByEsc();
 private slots:
     void onResumeClicked();
