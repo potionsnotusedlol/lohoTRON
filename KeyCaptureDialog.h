@@ -28,6 +28,7 @@ protected:
 private:
     QPropertyAnimation *fade_in_animation;
     bool closing = false;
+
 };
 
 #endif // KEYCAPTUREDIALOG_H

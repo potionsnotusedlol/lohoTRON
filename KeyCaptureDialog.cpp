@@ -143,9 +143,9 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
             KeyCaptureProcess dlg(this);
 
             if (dlg.exec() == QDialog::Accepted) {
-                int key = dlg.getKey();
+                QKeySequence key = dlg.getKeySelected();
 
-                forward_button->setText(QKeySequence(key).toString());
+                forward_button->setText(key.toString());
             }
         }    
     );
@@ -154,9 +154,9 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
             KeyCaptureProcess dlg(this);
 
             if (dlg.exec() == QDialog::Accepted) {
-                int key = dlg.getKey();
+                QKeySequence key = dlg.getKeySelected();
 
-                backward_button->setText(QKeySequence(key).toString());
+                backward_button->setText(key.toString());
             }
         }      
     );
@@ -165,9 +165,9 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
             KeyCaptureProcess dlg(this);
 
             if (dlg.exec() == QDialog::Accepted) {
-                int key = dlg.getKey();
+                QKeySequence key = dlg.getKeySelected();
 
-                left_button->setText(QKeySequence(key).toString());
+                left_button->setText(key.toString());
             }
         }     
     );
@@ -176,14 +176,23 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
             KeyCaptureProcess dlg(this);
 
             if (dlg.exec() == QDialog::Accepted) {
-                int key = dlg.getKey();
+                QKeySequence key = dlg.getKeySelected();
 
-                right_button->setText(QKeySequence(key).toString());
+                right_button->setText(key.toString());
             }
         }      
     );
     connect(cancel_rebinding_button, &QPushButton::clicked, this,
-        [this]() {
+        [this, root, forward_button, backward_button, left_button, right_button]() {
+            QJsonObject player = root.value("player").toObject();
+            QJsonArray key_bindings = player.value("key_bindings").toArray();
+
+
+            key_bindings[0] = QKeySequence(forward_button->text())[0];
+            key_bindings[1] = backward_button->text();
+            key_bindings[2] = left_button->text();
+            key_bindings[3] = right_button->text();
+
             if (!closing) {
                 closing = true;
 

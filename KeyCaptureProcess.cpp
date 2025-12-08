@@ -17,7 +17,7 @@ KeyCaptureProcess::KeyCaptureProcess(QWidget* parent) : QDialog(parent) {
 
     auto *layout = new QVBoxLayout(this);
     auto *hint = new QLabel("PRESS A BUTON TO ASSIGN");
-    auto *cancel_rebinding_button = new QPushButton("CANCEL");
+    auto *cancel_rebinding_button = new QPushButton("CLOSE");
 
     layout->addWidget(hint, 0, Qt::AlignCenter);
     layout->addStretch();
@@ -90,11 +90,11 @@ void KeyCaptureProcess::closeEvent(QCloseEvent* event) {
 void KeyCaptureProcess::keyPressEvent(QKeyEvent* event) {
     if (event->key() == Qt::Key_Escape) return;
 
-    key_selected = event->key();
+    key_selected = QKeySequence(event->key());
 
     if (key_selected == Qt::Key_Shift || key_selected == Qt::Key_Control || key_selected == Qt::Key_Alt || key_selected == Qt::Key_Meta || key_selected == Qt::Key_AltGr) return;
 
     accept();
 }
 
-int KeyCaptureProcess::getKey() const { return key_selected; }
+QKeySequence KeyCaptureProcess::getKeySelected() const { return key_selected; }

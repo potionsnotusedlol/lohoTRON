@@ -15,7 +15,7 @@ class KeyCaptureProcess : public QDialog {
     Q_OBJECT
 public:
     explicit KeyCaptureProcess(QWidget* parent = nullptr);
-    int getKey() const;
+    QKeySequence getKeySelected() const;
 protected:
     void showEvent(QShowEvent* event) override;
     void closeEvent(QCloseEvent* event) override;
@@ -23,7 +23,7 @@ protected:
 private:
     QPropertyAnimation *fade_in_animation;
     bool closing = false;
-    long key_selected;
+    QKeySequence key_selected;
 };
 
 #endif // KEYCAPTUREPROCESS_H
