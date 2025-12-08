@@ -1,6 +1,6 @@
 #include "KeyCaptureProcess.h"
 
-KeyCaptureProcess::KeyCaptureProcess(QWidget* parent) : QDialog(parent) {
+KeyCaptureProcess::KeyCaptureProcess(QWidget* parent, short button_index) : QDialog(parent), button_index(button_index) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
     setWindowOpacity(0.0);
     setWindowTitle("Rebind Keys");
@@ -17,11 +17,11 @@ KeyCaptureProcess::KeyCaptureProcess(QWidget* parent) : QDialog(parent) {
 
     auto *layout = new QVBoxLayout(this);
     auto *hint = new QLabel("PRESS A BUTON TO ASSIGN");
-    auto *cancel_rebinding_button = new QPushButton("CLOSE");
+    auto *close_rebinding_button = new QPushButton("CLOSE");
 
     layout->addWidget(hint, 0, Qt::AlignCenter);
     layout->addStretch();
-    layout->addWidget(cancel_rebinding_button, 0, Qt::AlignCenter);
+    layout->addWidget(close_rebinding_button, 0, Qt::AlignCenter);
     hint->setStyleSheet(
         "font: 20px;"
         "font-family: \"TraktorMoodFont\";"
@@ -29,12 +29,12 @@ KeyCaptureProcess::KeyCaptureProcess(QWidget* parent) : QDialog(parent) {
         "border: none;"
         "background: transparent;"
     );
-    cancel_rebinding_button->setStyleSheet(
+    close_rebinding_button->setStyleSheet(
         "font-size: 20px;"
         "border: none;"
         "background: transparent;"
     );
-    connect(cancel_rebinding_button, &QPushButton::clicked, this,
+    connect(close_rebinding_button, &QPushButton::clicked, this,
         [this]() {
             if (!closing) {
                 closing = true;
@@ -94,6 +94,14 @@ void KeyCaptureProcess::keyPressEvent(QKeyEvent* event) {
 
     if (key_selected == Qt::Key_Shift || key_selected == Qt::Key_Control || key_selected == Qt::Key_Alt || key_selected == Qt::Key_Meta || key_selected == Qt::Key_AltGr) return;
 
+    QJsonObject root = loadConfigRoot();
+    QJsonObject player = root.value("player").toObject();
+    QJsonArray key_array = player.value("key_bindings").toArray();
+    key_array[button_index] = key_selected.toString();
+
+    player["key_bindings"] = key_array;
+    root["player"] = player;
+    saveConfigRoot(root);
     accept();
 }
 

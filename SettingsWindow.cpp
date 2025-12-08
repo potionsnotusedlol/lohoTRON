@@ -27,8 +27,8 @@ void saveConfigRoot(const QJsonObject& root) {
     file.write(doc.toJson(QJsonDocument::Indented));
 }
 
-void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* keyButton) {
-    if (!nameEdit || !colorBox || !keyButton) return;
+void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox/* , QPushButton* keyButton */) {
+    if (!nameEdit || !colorBox/*  || !keyButton */) return;
 
     QJsonObject root = loadConfigRoot();
     QJsonObject player = root.value("player").toObject();
@@ -50,7 +50,7 @@ void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* k
         if (idx != -1) colorBox->setCurrentIndex(idx);
     } else if (colorBox->count() > 0) colorBox->setCurrentIndex(0);
 
-    QJsonArray keyArray = player.value("key_bindings").toArray();
+    // QJsonArray keyArray = player.value("key_bindings").toArray();
 
     // if (!keyArray.isEmpty()) {
     //     QStringList keys;
@@ -70,9 +70,9 @@ void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* k
     //     }
     // }
 
-    const QString keyBind = player.value("key_binding").toString();
+    // const QString keyBind = player.value("key_binding").toString();
 
-    if (!keyBind.isEmpty()) keyButton->setText(keyBind);
+    // if (!keyBind.isEmpty()) keyButton->setText(keyBind);
 }
 
 // class KeyCaptureDialog : public QDialog {
@@ -279,12 +279,12 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
         "margin-left: 2px;"
         "background: transparent;"
     );
-    loadPlayerSettings(player_name_input, color_picker_dropdown, key_rebinding_button);
+    loadPlayerSettings(player_name_input, color_picker_dropdown);
     connect(save_button, &QPushButton::clicked, this,
         [player_name_input, color_picker_dropdown, key_rebinding_button]() {
-            QJsonObject root   = loadConfigRoot();
+            QJsonObject root = loadConfigRoot();
             QJsonObject player = root.value("player").toObject();
-            player["name"]  = player_name_input->text();
+            player["name"] = player_name_input->text();
             player["color"] = color_picker_dropdown->currentText();
 
             QString keyText = key_rebinding_button->text();
@@ -352,6 +352,7 @@ void SettingsWindow::keyPressEvent(QKeyEvent* event) { QDialog::keyPressEvent(ev
 
 void SettingsWindow::showEvent(QShowEvent* event) {
     QDialog::showEvent(event);
+
     QWidget* win = window();
 
     if (win) {
@@ -381,7 +382,6 @@ void SettingsWindow::closeEvent(QCloseEvent* event) {
         fade_out->setEndValue(0.0);
 
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
-
         fade_out->start(QAbstractAnimation::DeleteWhenStopped);
     } else QDialog::closeEvent(event);
 }

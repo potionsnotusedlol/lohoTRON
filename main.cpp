@@ -1,6 +1,24 @@
 #include <QApplication>
 #include "mainwindow.h"
 #include <QFontDatabase>
+#include "SettingsWindow.h"
+
+// function to define default settings for first game startup
+void createDefaultRoot() {
+    QJsonObject root = loadConfigRoot();
+
+    if (!root.isEmpty()) return;
+
+    QJsonObject player = root.value("player").toObject();
+    player["name"] = "noname";
+    player["color"] = "blue";
+
+    QJsonArray keys = {"W", "S", "A", "D"};
+
+    player["key_bindings"] = keys;
+    root["player"] = player;
+    saveConfigRoot(root);
+}
 
 int main(int argc, char* argv[]) {
     QApplication a(argc, argv);
@@ -14,8 +32,9 @@ int main(int argc, char* argv[]) {
     // loading fonts into program DB
     for (const QString& font_path : fonts) int id = QFontDatabase::addApplicationFont(font_path);
 
-    mainwindow w;
+    createDefaultRoot();
 
+    mainwindow w;
     w.showFullScreen();
 
     return a.exec();

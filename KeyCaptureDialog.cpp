@@ -16,6 +16,8 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
     );
 
     QJsonObject root = loadConfigRoot();
+    QJsonObject player = root.value("player").toObject();
+    QJsonArray keys = player.value("key_bindings").toArray();
     auto *layout = new QVBoxLayout(this);
     auto *forward_layout = new QHBoxLayout(this);
     auto *forward_label = new QLabel("MOVE FORWARD");
@@ -33,26 +35,12 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
     auto *cancel_rebinding_button = new QPushButton("CANCEL");
     int rebind_window_width = this->width();
 
-    if (root.isEmpty()) {
-        key_assigned_forward = "N/A";
-        key_assigned_backward = "N/A";
-        key_assigned_left = "N/A";
-        key_assigned_right = "N/A";
-    } else {
-        QJsonObject player = root.value("player").toObject();
-        QJsonArray keys = player.value("key_bindings").toArray();
-
-        if (!keys.isEmpty()) {
-            key_assigned_forward = keys[0].toString();
-            key_assigned_backward = keys[1].toString();
-            key_assigned_left = keys[2].toString();
-            key_assigned_right = keys[3].toString();
-        } else {
-            key_assigned_forward = "N/A";
-            key_assigned_backward = "N/A";
-            key_assigned_left = "N/A";
-            key_assigned_right = "N/A";
-        }
+    // neither the root nor the keys array can be empty (made sure in main.cpp)
+    if (!keys.isEmpty()) {
+        key_assigned_forward = keys[0].toString();
+        key_assigned_backward = keys[1].toString();
+        key_assigned_left = keys[2].toString();
+        key_assigned_right = keys[3].toString();
     }
 
     layout->addLayout(forward_layout);
@@ -140,18 +128,20 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
     right_button->setText(key_assigned_right);
     connect(forward_button, &QPushButton::clicked, this,
         [this, forward_button]() {
-            KeyCaptureProcess dlg(this);
+            KeyCaptureProcess dlg(this, 0);
 
             if (dlg.exec() == QDialog::Accepted) {
                 QKeySequence key = dlg.getKeySelected();
 
                 forward_button->setText(key.toString());
             }
+
+
         }    
     );
     connect(backward_button, &QPushButton::clicked, this,
         [this, backward_button]() {
-            KeyCaptureProcess dlg(this);
+            KeyCaptureProcess dlg(this, 1);
 
             if (dlg.exec() == QDialog::Accepted) {
                 QKeySequence key = dlg.getKeySelected();
@@ -162,7 +152,7 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
     );
     connect(left_button, &QPushButton::clicked, this,
         [this, left_button]() {
-            KeyCaptureProcess dlg(this);
+            KeyCaptureProcess dlg(this, 2);
 
             if (dlg.exec() == QDialog::Accepted) {
                 QKeySequence key = dlg.getKeySelected();
@@ -173,7 +163,7 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
     );
     connect(right_button, &QPushButton::clicked, this,
         [this, right_button]() {
-            KeyCaptureProcess dlg(this);
+            KeyCaptureProcess dlg(this, 3);
 
             if (dlg.exec() == QDialog::Accepted) {
                 QKeySequence key = dlg.getKeySelected();
@@ -183,16 +173,7 @@ KeyCaptureDialog::KeyCaptureDialog(QWidget* parent) : QDialog(parent) {
         }      
     );
     connect(cancel_rebinding_button, &QPushButton::clicked, this,
-        [this, root, forward_button, backward_button, left_button, right_button]() {
-            QJsonObject player = root.value("player").toObject();
-            QJsonArray key_bindings = player.value("key_bindings").toArray();
-
-
-            key_bindings[0] = QKeySequence(forward_button->text())[0];
-            key_bindings[1] = backward_button->text();
-            key_bindings[2] = left_button->text();
-            key_bindings[3] = right_button->text();
-
+        [this]() {
             if (!closing) {
                 closing = true;
 
