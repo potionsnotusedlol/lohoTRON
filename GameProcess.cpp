@@ -135,6 +135,21 @@ void GameProcess::initializeGL() {
     glClearColor(0.0f, 0.0f, 0.03f, 1.0f);
 }
 
+void GameProcess::killBike(int idx)
+{
+    if (idx < 0 || idx >= static_cast<int>(m_bikes.size())) return;
+    Bike& b = m_bikes[idx];
+    if (!b.alive) return;
+
+    b.alive = false;
+    ++m_deadCount;
+
+    if (b.human) {
+        int total = static_cast<int>(m_bikes.size());
+        m_playerRank = total - m_deadCount + 1;
+    }
+}
+
 void GameProcess::resizeGL(int w, int h) { glViewport(0, 0, w, h); }
 
 void GameProcess::paintGL() {
@@ -305,10 +320,11 @@ void GameProcess::onTick() { update(); }
 void GameProcess::updateSimulation(float dt)
 {
     if (dt <= 0.0f) return;
-    float bikeRadius  = 0.8f;  
-    float trailRadius = 0.3f;  
 
     m_time += dt;
+
+    float bikeRadius  = 0.8f;
+    float trailRadius = 0.3f;
 
     for (int i = 0; i < static_cast<int>(m_bikes.size()); ++i) {
         Bike& b = m_bikes[i];
@@ -316,27 +332,104 @@ void GameProcess::updateSimulation(float dt)
 
         b.prevPos = b.pos;
 
-        float turnInput = 0.0f;
+        float turnInput   = 0.0f;
         bool  moveForward = false;
 
         if (b.human) {
-            if (m_keyLeft)  turnInput += 1.0f;   
-            if (m_keyRight) turnInput -= 1.0f;   
-            moveForward = m_keyForward || m_keyBackward || true;
+            if (m_keyLeft)  turnInput += 1.0f;
+            if (m_keyRight) turnInput -= 1.0f;
+            moveForward = true;
         } else {
             moveForward = true;
-            b.aiTurnTimer -= dt;
-            if (b.aiTurnTimer <= 0.0f) {
-                b.aiTurnTimer = 0.7f + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 1.8f;
-                float r = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
-                if (r < 0.33f)      b.aiTurnDir = -1.0f;
-                else if (r > 0.66f) b.aiTurnDir =  1.0f;
-                else                b.aiTurnDir =  0.0f;
+        
+            const float lookAheadDist  = 200.0f;   
+            const float avoidThreshold = 2.0f;   
+            const float attackDist2    = 400.0f; 
+            const float minDotAttack   = 0.1f;   
+        
+            const Bike& player = m_bikes[0];
+        
+            QVector3D localForward(0.0f, 0.0f, -1.0f);
+            QMatrix4x4 rot;
+            rot.setToIdentity();
+            rot.rotate(b.yaw * 180.0f / static_cast<float>(M_PI), 0.0f, 1.0f, 0.0f);
+            QVector3D forwardDir = rot.map(localForward).normalized();
+            QVector3D rightDir(forwardDir.z(), 0.0f, -forwardDir.x());
+        
+            bool needAvoid = false;
+            float avoidTurn = 0.0f;
+        
+            QVector3D ahead = b.pos + forwardDir * lookAheadDist;
+        
+            int nBots = static_cast<int>(m_bikes.size());
+            float safeR = 0.8f + 0.4f;
+        
+            for (int owner = 0; owner < nBots && !needAvoid; ++owner) {
+                const std::vector<TrailPoint>& trail = m_bikeTrails[owner];
+                if (trail.empty()) continue;
+            
+                for (size_t k = 0; k < trail.size(); ++k) {
+                    const TrailPoint& tp = trail[k];
+                    QVector3D p = tp.pos;
+                    p.setY(0.0f);
+                
+                    QVector3D v = p - b.pos;
+                    v.setY(0.0f);
+                
+                    float proj = QVector3D::dotProduct(v, forwardDir);
+                    if (proj < 0.0f || proj > lookAheadDist) continue;
+                
+                    QVector3D projPoint = b.pos + forwardDir * proj;
+                    projPoint.setY(0.0f);
+                
+                    QVector3D diff = p - projPoint;
+                    diff.setY(0.0f);
+                    float dist2 = diff.lengthSquared();
+                
+                    if (dist2 <= avoidThreshold * avoidThreshold) {
+                        float side = QVector3D::dotProduct(p - b.pos, rightDir);
+                        avoidTurn = (side >= 0.0f) ? -1.0f : 1.0f;
+                        needAvoid = true;
+                        break;
+                    }
+                }
             }
-            turnInput = b.aiTurnDir;
+        
+            if (needAvoid) {
+                turnInput = avoidTurn;
+            } else {
+                QVector3D toPlayer = player.pos - b.pos;
+                toPlayer.setY(0.0f);
+                float distPlayer2 = toPlayer.lengthSquared();
+            
+                if (distPlayer2 > 0.0001f) toPlayer.normalize();
+            
+                float dotForward = QVector3D::dotProduct(forwardDir, toPlayer);
+            
+                if (distPlayer2 <= attackDist2 && dotForward > minDotAttack) {
+                    float side = QVector3D::dotProduct(toPlayer, rightDir.normalized());
+                    if (side > 0.0f)
+                        turnInput = -1.0f;
+                    else
+                        turnInput = 1.0f;
+                
+                    turnInput *= 0.7f + 0.6f * (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX));
+                } else {
+                    b.aiTurnTimer -= dt;
+                    if (b.aiTurnTimer <= 0.0f) {
+                        b.aiTurnTimer = 0.5f + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) * 1.5f;
+                        float r = static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+                        if (r < 0.3f)      b.aiTurnDir = -1.0f;
+                        else if (r > 0.7f) b.aiTurnDir =  1.0f;
+                        else               b.aiTurnDir =  0.0f;
+                    }
+                    turnInput = b.aiTurnDir;
+                }
+            }
         }
 
-        float turnSpeed = m_turnSpeed;          
+
+        float turnSpeed = m_turnSpeed;
         float currentTurnSpeed = 0.0f;
         if (turnInput > 0.0f) currentTurnSpeed =  turnSpeed;
         if (turnInput < 0.0f) currentTurnSpeed = -turnSpeed;
@@ -344,18 +437,14 @@ void GameProcess::updateSimulation(float dt)
         b.yaw = wrapPi(b.yaw + currentTurnSpeed * dt);
 
         QVector3D localForward(0.0f, 0.0f, -1.0f);
-
-        float cy = std::cos(b.yaw);
-        float sy = std::sin(b.yaw);
         QMatrix4x4 rot;
         rot.setToIdentity();
         rot.rotate(b.yaw * 180.0f / static_cast<float>(M_PI), 0.0f, 1.0f, 0.0f);
+        QVector3D dir = rot * localForward;
 
-        QVector3D dir = rot * localForward;    
-
-        float maxSpeed      = m_maxForwardSpeed;   
-        float accelFactor   = m_acceleration;      
-        float decelFactor   = m_friction;          
+        float maxSpeed    = m_maxForwardSpeed;
+        float accelFactor = m_acceleration;
+        float decelFactor = m_friction;
 
         if (moveForward) {
             float desiredSpeed = maxSpeed;
@@ -366,10 +455,10 @@ void GameProcess::updateSimulation(float dt)
             b.speed += dv;
         }
 
-        if (b.speed > maxSpeed)  b.speed = maxSpeed;
-        if (b.speed < 0.0f)      b.speed = 0.0f;
+        if (b.speed > maxSpeed) b.speed = maxSpeed;
+        if (b.speed < 0.0f)     b.speed = 0.0f;
 
-        QVector3D vel = dir.normalized() * b.speed;
+        QVector3D vel    = dir.normalized() * b.speed;
         QVector3D newPos = b.pos + vel * dt;
 
         float border = m_mapHalfSize - m_cellSize * 2.0f;
@@ -390,62 +479,70 @@ void GameProcess::updateSimulation(float dt)
         }
     }
 
-    updateCamera(dt);
+    int n = static_cast<int>(m_bikes.size());
 
-    if (!m_roundOver) {
-        int n = static_cast<int>(m_bikes.size());
+    for (int i = 0; i < n; ++i) {
+        if (!m_bikes[i].alive) continue;
+        for (int j = i + 1; j < n; ++j) {
+            if (!m_bikes[j].alive) continue;
 
-        for (int i = 0; i < n; ++i) {
-            for (int j = i + 1; j < n; ++j) {
-                const Bike& A = m_bikes[i];
-                const Bike& B = m_bikes[j];
-                if (!A.alive || !B.alive) continue;
+            QVector3D d = m_bikes[i].pos - m_bikes[j].pos;
+            d.setY(0.0f);
+            float r = bikeRadius * 2.0f;
+            if (d.lengthSquared() <= r * r) {
+                killBike(i);
+                killBike(j);
+            }
+        }
+    }
 
-                QVector3D d = A.pos - B.pos;
+    for (int i = 0; i < n; ++i) {
+        if (!m_bikes[i].alive) continue;
+        Bike& A = m_bikes[i];
+
+        float hitR  = bikeRadius + trailRadius;
+        float hitR2 = hitR * hitR;
+
+        for (int owner = 0; owner < n; ++owner) {
+            const std::vector<TrailPoint>& trail = m_bikeTrails[owner];
+            if (trail.empty()) continue;
+
+            for (const TrailPoint& tp : trail) {
+                if (owner == i && (m_time - tp.time) < 0.1f) continue;
+
+                QVector3D d = A.pos - tp.pos;
                 d.setY(0.0f);
-                float r = bikeRadius * 2.0f;
-                if (d.lengthSquared() <= r * r) {
-                    m_roundOver = true;
+                if (d.lengthSquared() <= hitR2) {
+                    killBike(i);
                     break;
                 }
             }
-            if (m_roundOver) break;
+            if (!A.alive) break;
         }
+    }
 
-        if (!m_roundOver) {
-            for (int i = 0; i < n; ++i) {
-                const Bike& A = m_bikes[i];
-                if (!A.alive) continue;
+    if (!m_roundOver) {
+        int aliveCount = 0;
+        for (int i = 0; i < n; ++i)
+            if (m_bikes[i].alive) ++aliveCount;
 
-                float hitR = bikeRadius + trailRadius;
-                float hitR2 = hitR * hitR;
+        if (aliveCount <= 1) {
+            m_roundOver = true;
 
-                for (int owner = 0; owner < n; ++owner) {
-                    const std::vector<TrailPoint>& trail = m_bikeTrails[owner];
-                    if (trail.empty()) continue;
-
-                    for (const TrailPoint& tp : trail) {
-                        if (owner == i && (m_time - tp.time) < 0.1f) continue;
-
-                        QVector3D d = A.pos - tp.pos;
-                        d.setY(0.0f);
-                        if (d.lengthSquared() <= hitR2) {
-                            m_roundOver = true;
-                            break;
-                        }
-                    }
-                    if (m_roundOver) break;
-                }
-                if (m_roundOver) break;
+            int total = n;
+            if (m_bikes[0].alive) {
+                m_playerRank = 1;
+            } else if (m_playerRank == 0) {
+                m_playerRank = total - m_deadCount + 1;
             }
+
+            m_roundText = QString("РАУНД ЗАКОНЧЕН\nВы заняли %1 место").arg(m_playerRank);
         }
     }
 
     if (!m_roundOver) {
         updateCamera(dt);
     }
-
-
 }
 
 void GameProcess::updateCamera(float dt)

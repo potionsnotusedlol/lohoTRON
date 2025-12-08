@@ -51,18 +51,17 @@ protected:
     };
     struct Bike {
         QVector3D pos;
+        QVector3D prevPos;
+        QVector3D currPos;
         float yaw;
         float speed;
         float lean;
         QVector3D color;
-        bool human;
-        bool alive;
-        QVector3D prevPos;
-        QVector3D currPos;
+        bool  human;
+        bool  alive;
         float aiTurnTimer;
         float aiTurnDir;
     };
-
     void updateSimulation(float dt);
     void updateCamera(float dt);
     void updateTrail(float dt);
@@ -70,6 +69,7 @@ protected:
     void setupView();
     void drawScene3D();
     void drawGroundGrid();
+    void killBike(int idx);
     void drawBike();
     void drawTrail();
     static float clampf(float v, float lo, float hi);
@@ -109,7 +109,9 @@ protected:
     float m_friction;
     float m_turnSpeed;
     float m_maxLeanAngle;
-    bool  m_roundOver = false;
+    bool m_roundOver = false;
+    int  m_playerRank = 0;      
+    int  m_deadCount = 0; 
     QString m_roundText = "РАУНД ЗАКОНЧЕН\nНажмите любую клавишу";
     float m_leanSpeed;
     float  m_trailTTL;
