@@ -305,6 +305,8 @@ void GameProcess::onTick() { update(); }
 void GameProcess::updateSimulation(float dt)
 {
     if (dt <= 0.0f) return;
+    float bikeRadius  = 0.8f;  
+    float trailRadius = 0.3f;  
 
     m_time += dt;
 
@@ -390,23 +392,51 @@ void GameProcess::updateSimulation(float dt)
 
     updateCamera(dt);
 
-    if (!m_roundOver && !m_bikes.empty()) {
-        Bike& player = m_bikes[0];
-        if (player.alive) {
-            const std::vector<TrailPoint>& trail = m_bikeTrails[0];
+    if (!m_roundOver) {
+        int n = static_cast<int>(m_bikes.size());
 
-            float hitRadius = 1.0f; 
-            float hitR2 = hitRadius * hitRadius;
+        for (int i = 0; i < n; ++i) {
+            for (int j = i + 1; j < n; ++j) {
+                const Bike& A = m_bikes[i];
+                const Bike& B = m_bikes[j];
+                if (!A.alive || !B.alive) continue;
 
-            for (const TrailPoint& tp : trail) {
-                if (m_time - tp.time < 0.1f) continue;
-
-                QVector3D d = player.pos - tp.pos;
+                QVector3D d = A.pos - B.pos;
                 d.setY(0.0f);
-                if (d.lengthSquared() <= hitR2) {
+                float r = bikeRadius * 2.0f;
+                if (d.lengthSquared() <= r * r) {
                     m_roundOver = true;
                     break;
                 }
+            }
+            if (m_roundOver) break;
+        }
+
+        if (!m_roundOver) {
+            for (int i = 0; i < n; ++i) {
+                const Bike& A = m_bikes[i];
+                if (!A.alive) continue;
+
+                float hitR = bikeRadius + trailRadius;
+                float hitR2 = hitR * hitR;
+
+                for (int owner = 0; owner < n; ++owner) {
+                    const std::vector<TrailPoint>& trail = m_bikeTrails[owner];
+                    if (trail.empty()) continue;
+
+                    for (const TrailPoint& tp : trail) {
+                        if (owner == i && (m_time - tp.time) < 0.1f) continue;
+
+                        QVector3D d = A.pos - tp.pos;
+                        d.setY(0.0f);
+                        if (d.lengthSquared() <= hitR2) {
+                            m_roundOver = true;
+                            break;
+                        }
+                    }
+                    if (m_roundOver) break;
+                }
+                if (m_roundOver) break;
             }
         }
     }
@@ -414,6 +444,7 @@ void GameProcess::updateSimulation(float dt)
     if (!m_roundOver) {
         updateCamera(dt);
     }
+
 
 }
 
@@ -657,7 +688,7 @@ void GameProcess::drawBike()
 void GameProcess::drawTrail()
 {
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE); 
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
     glDisable(GL_CULL_FACE);
 
     for (size_t i = 0; i < m_bikes.size(); ++i) {
@@ -670,9 +701,9 @@ void GameProcess::drawTrail()
         float baseG = col.y();
         float baseB = col.z();
 
-        float halfWidth = 0.2f;           
-        float height    = 1.6f;           
-        float baseY     = 0.0f;           
+        float halfWidth = 0.35f;
+        float height    = 3.0f;
+        float baseY     = 0.0f;
 
         for (size_t k = 0; k + 1 < trail.size(); ++k) {
             const TrailPoint& a = trail[k];
@@ -685,8 +716,8 @@ void GameProcess::drawTrail()
 
             float alphaA = 1.0f - ageA / m_trailTTL;
             float alphaC = 1.0f - ageC / m_trailTTL;
-            if (alphaA < 0.1f) alphaA = 0.1f;
-            if (alphaC < 0.1f) alphaC = 0.1f;
+            if (alphaA < 0.2f) alphaA = 0.2f;
+            if (alphaC < 0.2f) alphaC = 0.2f;
 
             QVector3D p0 = a.pos;
             QVector3D p1 = c.pos;
@@ -711,40 +742,39 @@ void GameProcess::drawTrail()
 
             glBegin(GL_QUADS);
 
+            glColor4f(baseR, baseG, baseB, alphaA * 0.9f);
+            glVertex3f(b1.x(), b1.y(), b1.z());
+            glVertex3f(b2.x(), b2.y(), b2.z());
+            glColor4f(baseR, baseG, baseB, alphaC * 0.9f);
+            glVertex3f(b3.x(), b3.y(), b3.z());
+            glVertex3f(b4.x(), b4.y(), b4.z());
+
             glColor4f(baseR, baseG, baseB, alphaA * 0.7f);
-        
-            glVertex3f(b1.x(), b1.y(), b1.z());
-            glVertex3f(b2.x(), b2.y(), b2.z());
+            glVertex3f(t2.x(), t2.y(), t2.z());
+            glVertex3f(t1.x(), t1.y(), t1.z());
             glColor4f(baseR, baseG, baseB, alphaC * 0.7f);
-            glVertex3f(b3.x(), b3.y(), b3.z());
-            glVertex3f(b4.x(), b4.y(), b4.z());
-
-            glColor4f(baseR, baseG, baseB, alphaA * 0.5f);
-            glVertex3f(t2.x(), t2.y(), t2.z());
-            glVertex3f(t1.x(), t1.y(), t1.z());
-            glColor4f(baseR, baseG, baseB, alphaC * 0.5f);
             glVertex3f(t4.x(), t4.y(), t4.z());
             glVertex3f(t3.x(), t3.y(), t3.z());
 
-            glColor4f(baseR, baseG, baseB, alphaC * 0.6f);
+            glColor4f(baseR, baseG, baseB, alphaC * 0.8f);
             glVertex3f(t1.x(), t1.y(), t1.z());
             glVertex3f(t2.x(), t2.y(), t2.z());
             glVertex3f(t3.x(), t3.y(), t3.z());
             glVertex3f(t4.x(), t4.y(), t4.z());
 
-            glColor4f(baseR * 0.4f, baseG * 0.4f, baseB * 0.4f, alphaA * 0.4f);
+            glColor4f(baseR * 0.6f, baseG * 0.6f, baseB * 0.6f, alphaA * 0.5f);
             glVertex3f(b1.x(), b1.y(), b1.z());
             glVertex3f(b4.x(), b4.y(), b4.z());
             glVertex3f(b3.x(), b3.y(), b3.z());
             glVertex3f(b2.x(), b2.y(), b2.z());
 
-            glColor4f(baseR, baseG, baseB, alphaA * 0.6f);
+            glColor4f(baseR, baseG, baseB, alphaA * 0.8f);
             glVertex3f(b1.x(), b1.y(), b1.z());
             glVertex3f(t1.x(), t1.y(), t1.z());
             glVertex3f(t2.x(), t2.y(), t2.z());
             glVertex3f(b2.x(), b2.y(), b2.z());
 
-            glColor4f(baseR, baseG, baseB, alphaC * 0.6f);
+            glColor4f(baseR, baseG, baseB, alphaC * 0.8f);
             glVertex3f(b4.x(), b4.y(), b4.z());
             glVertex3f(t4.x(), t4.y(), t4.z());
             glVertex3f(t3.x(), t3.y(), t3.z());
