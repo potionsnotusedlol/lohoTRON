@@ -53,6 +53,8 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_bike.aiTurnDir = 0.0f;
     m_bikes.clear();
     m_bikeTrails.clear();
+
+
     pauseWindow = new GamePauseWindow(this);
 
     connect(pauseWindow, &GamePauseWindow::resumeGame, this, [this]() {
@@ -231,12 +233,13 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
         break;
     case Qt::Key_Escape:
     if (pauseWindow->isVisible()) {
-        pauseWindow->closeByEsc();
+        pauseWindow->reject();
     } else {
         m_paused = true;
         pauseWindow->exec();
     }
     break;
+
     default:
         break;
     }
@@ -592,31 +595,19 @@ void GameProcess::setupProjection() {
 
 void GameProcess::setupView() {
     if (m_bikes.empty()) return;
-
-    const Bike& player = m_bikes[0];
-
-    float yaw = player.yaw;
-
     float cp = std::cos(m_camPitch);
     float sp = std::sin(m_camPitch);
-    float cy = std::cos(yaw);
-    float sy = std::sin(yaw);
-
+    float cy = std::cos(m_camYaw);
+    float sy = std::sin(m_camYaw);
     QVector3D forward(sy * cp, sp, -cy * cp);
-
     QVector3D eye = m_camTarget - forward.normalized() * m_camDistanceCur;
     QVector3D up(0.0f, 1.0f, 0.0f);
-
     QMatrix4x4 view;
     view.setToIdentity();
     view.lookAt(eye, m_camTarget, up);
-
     glMatrixMode(GL_MODELVIEW);
     glLoadMatrixf(view.constData());
 }
-
-
-
 
 void GameProcess::drawScene3D() {
     drawGroundGrid();
@@ -745,7 +736,6 @@ void GameProcess::drawBike()
         if (!b.alive) continue;
 
         glPushMatrix();
-
         glTranslatef(b.pos.x(), b.pos.y(), b.pos.z());
 
         glRotatef(b.yaw * rad2deg, 0.0f, 1.0f, 0.0f);
@@ -761,17 +751,17 @@ void GameProcess::drawBike()
 
         glBegin(GL_QUADS);
 
-        glColor3f(b.color.x(), b.color.y(), b.color.z());
-        glVertex3f(x0, y0, z1);
-        glVertex3f(x1, y0, z1);
-        glVertex3f(x1, y1, z1);
-        glVertex3f(x0, y1, z1);
+        glColor3f(1.0f, 1.0f, 1.0f);
+        glVertex3f(x0, y0, z0);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x1, y1, z0);
+        glVertex3f(x0, y1, z0);
 
         glColor3f(b.color.x() * 0.5f, b.color.y() * 0.5f, b.color.z() * 0.5f);
-        glVertex3f(x1, y0, z0);
-        glVertex3f(x0, y0, z0);
-        glVertex3f(x0, y1, z0);
-        glVertex3f(x1, y1, z0);
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x0, y0, z1);
+        glVertex3f(x0, y1, z1);
+        glVertex3f(x1, y1, z1);
 
         glColor3f(b.color.x() * 0.7f, b.color.y() * 0.7f, b.color.z() * 0.7f);
         glVertex3f(x0, y0, z1); glVertex3f(x0, y0, z0);
@@ -789,7 +779,6 @@ void GameProcess::drawBike()
         glVertex3f(x1, y0, z0); glVertex3f(x0, y0, z0);
 
         glEnd();
-
         glPopMatrix();
     }
 }

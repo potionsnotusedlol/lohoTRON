@@ -27,6 +27,7 @@ signals:
     void cancelPause();
     public slots:
     void closeByEsc();
+    void reject(); 
 private slots:
     void onResumeClicked();
     void onRestartClicked();

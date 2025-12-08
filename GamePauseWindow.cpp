@@ -145,6 +145,26 @@ void GamePauseWindow::closeByEsc() {
     }
 }
 
+void GamePauseWindow::reject()
+{
+    if (!closing) {
+        closing = true;
+
+        auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
+        fade_out->setDuration(pauseSettings().animation_duration);
+        fade_out->setStartValue(windowOpacity());
+        fade_out->setEndValue(0.0);
+
+        connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
+            emit resumeGame();
+            QDialog::reject();
+        });
+
+        fade_out->start(QAbstractAnimation::DeleteWhenStopped);
+    }
+}
+
+
 void GamePauseWindow::setupConnections() {
     connect(resume_button, &QPushButton::clicked, this, &GamePauseWindow::onResumeClicked);
     connect(restart_button, &QPushButton::clicked, this, &GamePauseWindow::onRestartClicked);
@@ -163,7 +183,7 @@ void GamePauseWindow::onResumeClicked() {
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
             emit resumeGame();
-            QDialog::close();
+            QDialog::reject();
         });
         
         fade_out->start(QAbstractAnimation::DeleteWhenStopped);
@@ -182,7 +202,7 @@ void GamePauseWindow::onRestartClicked() {
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
             emit restartGame();
-            QDialog::close();
+            QDialog::reject();
         });
         
         fade_out->start(QAbstractAnimation::DeleteWhenStopped);
@@ -200,7 +220,7 @@ void GamePauseWindow::onExitClicked() {
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() {
             emit exitToMenu();
-            QDialog::close();
+            QDialog::reject();
         });
         
         fade_out->start(QAbstractAnimation::DeleteWhenStopped);
