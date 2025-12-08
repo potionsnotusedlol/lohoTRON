@@ -256,37 +256,33 @@ void GameProcess::mouseReleaseEvent(QMouseEvent* event) { QOpenGLWidget::mouseRe
 
 void GameProcess::mouseMoveEvent(QMouseEvent* event)
 {
-    QPoint center = rect().center();
-    QPoint delta = event->pos() - center;
-    if (delta.isNull()) {
+    static bool first = true;
+    static QPoint lastPos;
+
+    if (first) {
+        first = false;
+        lastPos = event->pos();
         QOpenGLWidget::mouseMoveEvent(event);
         return;
     }
 
+    QPoint cur  = event->pos();
+    QPoint delta = cur - lastPos;
+    lastPos = cur;
+
     float dx = static_cast<float>(delta.x());
     float dy = static_cast<float>(delta.y());
 
-    float sens = m_mouseSensitivity * 0.5f;   
-    float yawDelta    = -dx * sens;
-    float targetPitch = m_camPitch - dy * sens;
+    float sens = m_mouseSensitivity;
 
-    float minPitch = -1.4f;
-    float maxPitch =  0.1f;
-    if (targetPitch < minPitch) targetPitch = minPitch;
-    if (targetPitch > maxPitch) targetPitch = maxPitch;
+    m_camYaw   -= dx * sens;
+    m_camPitch -= dy * sens;
 
-    float t = 0.25f; 
-    m_camPitch = lerpf(m_camPitch, targetPitch, t);
+    float minPitch = -static_cast<float>(M_PI) * 0.5f + 0.1f;
+    float maxPitch =  static_cast<float>(M_PI) * 0.5f - 0.1f;
+    if (m_camPitch < minPitch) m_camPitch = minPitch;
+    if (m_camPitch > maxPitch) m_camPitch = maxPitch;
 
-    if (!m_bikes.empty()) {
-        Bike& player = m_bikes[0];
-        if (player.alive) {
-            player.yaw = wrapPi(player.yaw + yawDelta);
-            m_camYaw = player.yaw;
-        }
-    }
-
-    QCursor::setPos(mapToGlobal(center));
     QOpenGLWidget::mouseMoveEvent(event);
 }
 
@@ -384,7 +380,6 @@ void GameProcess::updateSimulation(float dt)
 void GameProcess::updateCamera(float dt)
 {
     if (m_bikes.empty()) return;
-
     const Bike& player = m_bikes[0];
 
     QVector3D desiredTarget = player.pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
@@ -395,21 +390,9 @@ void GameProcess::updateCamera(float dt)
 
     m_camDistanceCur += (m_camDistance - m_camDistanceCur) * t;
 
-    float cy = std::cos(player.yaw);
-    float sy = std::sin(player.yaw);
-
-    QVector3D backDir(sy, 0.0f, cy);      
-    backDir.normalize();
-
-    QVector3D eye = player.pos + QVector3D(0.0f, m_camTargetHeight, 0.0f)
-                    + backDir * m_camDistanceCur;
-
-    QVector3D toTarget = (m_camTarget - eye).normalized();
-    m_camYaw   = std::atan2(toTarget.x(), -toTarget.z());
-    m_camPitch = std::asin(toTarget.y());
-    m_camPitch = clampf(m_camPitch, -1.4f, 0.1f);
+    m_camYaw = -player.yaw;
+    m_camPitch = -0.4f;
 }
-
 
 void GameProcess::updateTrail(float dt) {
     if (m_trailTTL <= 0.0f) return;
