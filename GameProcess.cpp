@@ -166,6 +166,15 @@ void GameProcess::paintGL() {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setPen(QPen(Qt::white));
+    if (m_roundOver) {
+        QFont f = p.font();
+        f.setPointSize(36);
+        f.setBold(true);
+        p.setFont(f);
+        p.setPen(QPen(Qt::red));
+        p.drawText(rect(), Qt::AlignCenter, m_roundText);
+    }
+
 
 }
 
@@ -177,7 +186,12 @@ void GameProcess::keyPressEvent(QKeyEvent* event)
         return;
     }
 
-
+    if (m_roundOver) {
+        m_roundOver = false;
+        resetGame();                  
+        QOpenGLWidget::keyPressEvent(event);
+        return;
+    }
 
     switch (event->key()) {
     case Qt::Key_W:
@@ -375,6 +389,32 @@ void GameProcess::updateSimulation(float dt)
     }
 
     updateCamera(dt);
+
+    if (!m_roundOver && !m_bikes.empty()) {
+        Bike& player = m_bikes[0];
+        if (player.alive) {
+            const std::vector<TrailPoint>& trail = m_bikeTrails[0];
+
+            float hitRadius = 1.0f; 
+            float hitR2 = hitRadius * hitRadius;
+
+            for (const TrailPoint& tp : trail) {
+                if (m_time - tp.time < 0.1f) continue;
+
+                QVector3D d = player.pos - tp.pos;
+                d.setY(0.0f);
+                if (d.lengthSquared() <= hitR2) {
+                    m_roundOver = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (!m_roundOver) {
+        updateCamera(dt);
+    }
+
 }
 
 void GameProcess::updateCamera(float dt)
@@ -614,69 +654,102 @@ void GameProcess::drawBike()
 }
 
 
-void GameProcess::drawTrail() {
-    float rad2deg = 180.0f / static_cast<float>(M_PI);
-
-    Q_UNUSED(rad2deg);
+void GameProcess::drawTrail()
+{
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE); 
     glDisable(GL_CULL_FACE);
 
     for (size_t i = 0; i < m_bikes.size(); ++i) {
         const Bike& b = m_bikes[i];
         const std::vector<TrailPoint>& trail = m_bikeTrails[i];
-
-        if (trail.empty()) continue;
+        if (trail.size() < 2) continue;
 
         QVector3D col = b.color;
+        float baseR = col.x();
+        float baseG = col.y();
+        float baseB = col.z();
 
-        for (size_t k = 0; k < trail.size(); ++k) {
-            const TrailPoint& tp = trail[k];
+        float halfWidth = 0.2f;           
+        float height    = 1.6f;           
+        float baseY     = 0.0f;           
 
-            float age = m_time - tp.time;
+        for (size_t k = 0; k + 1 < trail.size(); ++k) {
+            const TrailPoint& a = trail[k];
+            const TrailPoint& c = trail[k + 1];
 
-            if (age < 0.0f || age > m_trailTTL) continue;
+            float ageA = m_time - a.time;
+            float ageC = m_time - c.time;
+            if (ageA < 0.0f || ageA > m_trailTTL) continue;
+            if (ageC < 0.0f || ageC > m_trailTTL) continue;
 
-            float alpha = 1.0f;
+            float alphaA = 1.0f - ageA / m_trailTTL;
+            float alphaC = 1.0f - ageC / m_trailTTL;
+            if (alphaA < 0.1f) alphaA = 0.1f;
+            if (alphaC < 0.1f) alphaC = 0.1f;
 
-            if (m_trailTTL > 0.0f) {
-                alpha = 1.0f - age / m_trailTTL;
+            QVector3D p0 = a.pos;
+            QVector3D p1 = c.pos;
+            p0.setY(baseY);
+            p1.setY(baseY);
 
-                if (alpha < 0.15f) alpha = 0.15f;
+            QVector3D dir = (p1 - p0);
+            dir.setY(0.0f);
+            if (dir.lengthSquared() < 0.0001f) continue;
+            dir.normalize();
+            QVector3D perp(-dir.z(), 0.0f, dir.x());
 
-                if (alpha > 1.0f) alpha = 1.0f;
-            }
+            QVector3D b1 = p0 - perp * halfWidth;
+            QVector3D b2 = p0 + perp * halfWidth;
+            QVector3D b3 = p1 + perp * halfWidth;
+            QVector3D b4 = p1 - perp * halfWidth;
 
-            QVector3D base = tp.pos;
-            float halfSize = m_trailColumnSize, h = m_trailColumnHeight;
-            float x0 = base.x() - halfSize, x1 = base.x() + halfSize, z0 = base.z() - halfSize, z1 = base.z() + halfSize, y0 = base.y(), y1 = base.y() + h;
+            QVector3D t1 = b1 + QVector3D(0.0f, height, 0.0f);
+            QVector3D t2 = b2 + QVector3D(0.0f, height, 0.0f);
+            QVector3D t3 = b3 + QVector3D(0.0f, height, 0.0f);
+            QVector3D t4 = b4 + QVector3D(0.0f, height, 0.0f);
 
             glBegin(GL_QUADS);
-            glColor4f(col.x(), col.y(), col.z(), alpha);
-            glVertex3f(x0, y0, z1);
-            glVertex3f(x1, y0, z1);
-            glVertex3f(x1, y1, z1);
-            glVertex3f(x0, y1, z1);
-            glVertex3f(x1, y0, z0);
-            glVertex3f(x0, y0, z0);
-            glVertex3f(x0, y1, z0);
-            glVertex3f(x1, y1, z0);
-            glVertex3f(x0, y0, z0);
-            glVertex3f(x0, y0, z1);
-            glVertex3f(x0, y1, z1);
-            glVertex3f(x0, y1, z0);
-            glVertex3f(x1, y0, z1);
-            glVertex3f(x1, y0, z0);
-            glVertex3f(x1, y1, z0);
-            glVertex3f(x1, y1, z1);
-            glVertex3f(x0, y1, z1);
-            glVertex3f(x1, y1, z1);
-            glVertex3f(x1, y1, z0);
-            glVertex3f(x0, y1, z0);
-            glVertex3f(x0, y0, z0);
-            glVertex3f(x1, y0, z0);
-            glVertex3f(x1, y0, z1);
-            glVertex3f(x0, y0, z1);
+
+            glColor4f(baseR, baseG, baseB, alphaA * 0.7f);
+        
+            glVertex3f(b1.x(), b1.y(), b1.z());
+            glVertex3f(b2.x(), b2.y(), b2.z());
+            glColor4f(baseR, baseG, baseB, alphaC * 0.7f);
+            glVertex3f(b3.x(), b3.y(), b3.z());
+            glVertex3f(b4.x(), b4.y(), b4.z());
+
+            glColor4f(baseR, baseG, baseB, alphaA * 0.5f);
+            glVertex3f(t2.x(), t2.y(), t2.z());
+            glVertex3f(t1.x(), t1.y(), t1.z());
+            glColor4f(baseR, baseG, baseB, alphaC * 0.5f);
+            glVertex3f(t4.x(), t4.y(), t4.z());
+            glVertex3f(t3.x(), t3.y(), t3.z());
+
+            glColor4f(baseR, baseG, baseB, alphaC * 0.6f);
+            glVertex3f(t1.x(), t1.y(), t1.z());
+            glVertex3f(t2.x(), t2.y(), t2.z());
+            glVertex3f(t3.x(), t3.y(), t3.z());
+            glVertex3f(t4.x(), t4.y(), t4.z());
+
+            glColor4f(baseR * 0.4f, baseG * 0.4f, baseB * 0.4f, alphaA * 0.4f);
+            glVertex3f(b1.x(), b1.y(), b1.z());
+            glVertex3f(b4.x(), b4.y(), b4.z());
+            glVertex3f(b3.x(), b3.y(), b3.z());
+            glVertex3f(b2.x(), b2.y(), b2.z());
+
+            glColor4f(baseR, baseG, baseB, alphaA * 0.6f);
+            glVertex3f(b1.x(), b1.y(), b1.z());
+            glVertex3f(t1.x(), t1.y(), t1.z());
+            glVertex3f(t2.x(), t2.y(), t2.z());
+            glVertex3f(b2.x(), b2.y(), b2.z());
+
+            glColor4f(baseR, baseG, baseB, alphaC * 0.6f);
+            glVertex3f(b4.x(), b4.y(), b4.z());
+            glVertex3f(t4.x(), t4.y(), t4.z());
+            glVertex3f(t3.x(), t3.y(), t3.z());
+            glVertex3f(b3.x(), b3.y(), b3.z());
+
             glEnd();
         }
     }

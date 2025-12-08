@@ -109,6 +109,8 @@ protected:
     float m_friction;
     float m_turnSpeed;
     float m_maxLeanAngle;
+    bool  m_roundOver = false;
+    QString m_roundText = "РАУНД ЗАКОНЧЕН\nНажмите любую клавишу";
     float m_leanSpeed;
     float  m_trailTTL;
     float  m_trailMinDist;
