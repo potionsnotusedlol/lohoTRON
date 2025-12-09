@@ -17,6 +17,13 @@ void createDefaultRoot() {
 
     player["key_bindings"] = keys;
     root["player"] = player;
+
+    QJsonObject envSet;
+    envSet["bots_count_default"] = 3;
+    envSet["bots_count_max"] = 10;
+    envSet["bots_count_min"] = 1;
+    envSet["field_size"] = 300;
+    root["environment"] = envSet;
     saveConfigRoot(root);
 }
 
