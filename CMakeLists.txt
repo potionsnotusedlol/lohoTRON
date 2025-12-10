@@ -1,14 +1,12 @@
 cmake_minimum_required(VERSION 3.27)
 project(lohoTRON LANGUAGES CXX)
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-
 find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets Gui OpenGLWidgets)
+message("Qt version: ${Qt6_VERSION}")
 
 if(APPLE)
     set(OGRE_DIR "/opt/local/share/ogre/Cmake")
@@ -19,7 +17,7 @@ elseif(UNIX)
     set(OGRE_PLUGIN_DIR "/usr/local/lib/OGRE")
     set(OGRE_MEDIA_DIR "/usr/local/share/OGRE/Media")
     # ensuring OGRE can be found as a snap package 
-    find_package(OGRE)
+    find_package(OGRE QUIET)
 
     if(NOT OGRE_FOUND)
         set(OGRE_DIR "/snap/ogre/current/lib/OGRE/cmake")
@@ -27,40 +25,39 @@ elseif(UNIX)
         set(OGRE_MEDIA_DIR "/snap/ogre/current/share/OGRE-14.4/Media")
         find_package(OGRE REQUIRED)
     endif()
+
+    find_package(OGRE REQUIRED)
 endif()
 
-find_package(OGRE REQUIRED)
 
 # --- Source files ---
 set(SOURCES
-    main.cpp
-    mainwindow.cpp
-    MainMenuWidget.cpp
-    MainMenuWidget.ui
-    SettingsWindow.cpp
-    GameStartWindow.cpp
-    QuitGameWindow.cpp
-    CreatorsWindow.cpp
-    GameProcess.cpp
-    KeyCaptureDialog.cpp
-    KeyCaptureProcess.cpp
-    GamePauseWindow.cpp
+    ./src/main.cpp
+    ./src/mainwindow.cpp
+    ./src/MainMenuWidget.cpp
+    ./src/MainMenuWidget.ui
+    ./src/SettingsWindow.cpp
+    ./src/GameStartWindow.cpp
+    ./src/QuitGameWindow.cpp
+    ./src/CreatorsWindow.cpp
+    ./src/GameProcess.cpp
+    ./src/KeyCaptureDialog.cpp
+    ./src/KeyCaptureProcess.cpp
+    ./src/GamePauseWindow.cpp
     resources.qrc
 )
-
 set(HEADERS
-    mainwindow.h
-    MainMenuWidget.h
-    SettingsWindow.h
-    GameStartWindow.h
-    QuitGameWindow.h
-    CreatorsWindow.h
-    GameProcess.h
-    KeyCaptureDialog.h
-    KeyCaptureProcess.h
-    GamePauseWindow.h
+    ./src/mainwindow.h
+    ./src/MainMenuWidget.h
+    ./src/SettingsWindow.h
+    ./src/GameStartWindow.h
+    ./src/QuitGameWindow.h
+    ./src/CreatorsWindow.h
+    ./src/GameProcess.h
+    ./src/KeyCaptureDialog.h
+    ./src/KeyCaptureProcess.h
+    ./src/GamePauseWindow.h
 )
-
 # --- Executable target ---
 qt_add_executable(lohoTRON
     ${SOURCES}
@@ -90,7 +87,6 @@ elseif(UNIX)
         OgreOverlay 
         OgreMain
     )
-
     find_library(GL_LIBRARY GL)
 
     if(GL_LIBRARY)
@@ -127,23 +123,49 @@ if(UNIX AND NOT APPLE)
     endif()
 endif()
 
-set(OGRE_PLUGIN_DIR "/usr/local/lib/OGRE")
-set(OGRE_MEDIA_DIR "/usr/local/share/OGRE/Media")
 configure_file(plugins.cfg.in plugins.cfg @ONLY)
 configure_file(resources.cfg.in resources.cfg @ONLY)
-
 include(GNUInstallDirs)
-
 install(TARGETS lohoTRON
     BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMALE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+install(FILES
+    fonts/Bolgarus\ Beta.ttf
+    fonts/FREEFATFONT-Regular.otf
+    fonts/TraktorMoodFont-Regular.otf
+    fonts/Wattauchimma.ttf
+    images/bg_menu.png
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/lohoTRON
+)
+install(DIRECTORY ${OGRE_MEDIA_DIR}/
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/lohoTRON/Media
+)
+install(FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/plugins.cfg
+    ${CMAKE_CURRENT_BINARY_DIR}/resources.cfg
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+install(DIRECTORY "${OGRE_PLUGIN_DIR}/"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/OGRE"
+    FILES_MATCHING PATTERN "*.so"
 )
 
+if(TARGET SDL2::SDL2)
+    get_target_property(SDL2_LIB SDL2::SDL2 IMPORTED_LOCATION)
+
+    if(SDL2_LIB)
+        install(FILES "${SDL2_LIB}" DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    endif()
+endif()
+
+include("${Qt6Core_DIR}/Qt6CoreDeploySupport.cmake")
+set(DEPLOY_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_game_script.cmake")
+# install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qt.conf" DESTINATION ${CMAKE_INSTALL_BINDIR})
 qt_generate_deploy_app_script(
     TARGET lohoTRON
-    OUTPUT_SCRIPT deploy_script
+    OUTPUT_SCRIPT DEPLOY_SCRIPT
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
-
-install(SCRIPT ${deploy_script})
+install(SCRIPT ${DEPLOY_SCRIPT})
