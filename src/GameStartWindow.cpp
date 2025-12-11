@@ -366,7 +366,7 @@ GameStartWindow::GameStartWindow(QWidget* parent)
 
             g_current_field_size = defaults().field_size;
 
-            saveGameConfig(g_current_field_size, g_current_bots_count, g_current_rounds_count);
+            // saveGameConfig(g_current_field_size, g_current_bots_count, g_current_rounds_count);
 
             QWidget* w = this->parentWidget();
             while (w && qobject_cast<mainwindow*>(w) == nullptr)
