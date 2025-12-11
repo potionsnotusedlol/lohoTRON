@@ -25,10 +25,9 @@ elseif(UNIX)
         set(OGRE_MEDIA_DIR "/snap/ogre/current/share/OGRE-14.4/Media")
         find_package(OGRE REQUIRED)
     endif()
-
-    find_package(OGRE REQUIRED)
 endif()
 
+find_package(OGRE REQUIRED)
 
 # --- Source files ---
 set(SOURCES
