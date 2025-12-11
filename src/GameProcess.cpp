@@ -4,83 +4,91 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     setFocusPolicy(Qt::StrongFocus);
     m_root.reset();
     m_scene_manager = nullptr;
-    setMouseTracking(true);  
-    setCursor(Qt::BlankCursor);  
+    setMouseTracking(true);
+    setCursor(Qt::BlankCursor);
     m_render_window = nullptr;
     m_fieldSize = 100;
-    m_gridSize = m_fieldSize;
-    m_cellSize = 2.0f;
+    m_gridSize  = m_fieldSize;
+    m_cellSize  = 2.0f;
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
     m_paused = false;
-    m_camYaw = 0.0f;
-    m_camPitch = -0.4f;
-    m_camDistance = 12.0f;
-    m_camDistanceCur = m_camDistance;
+    m_camYaw        = 0.0f;
+    m_camPitch      = -0.4f;
+    m_camDistance   = 12.0f;
+    m_camDistanceCur= m_camDistance;
     m_camTargetHeight = 3.0f;
-    m_camSmooth = 8.0f;
-    m_camTarget = QVector3D(0.0f, m_camTargetHeight, 0.0f);
-    m_rmbDown = false;
+    m_camSmooth     = 8.0f;
+    m_camTarget     = QVector3D(0.0f, m_camTargetHeight, 0.0f);
+    m_rmbDown       = false;
     m_mouseCaptured = false;
     m_mouseSensitivity = 0.0018f;
-    m_keyForward = false;
+    m_keyForward  = false;
     m_keyBackward = false;
-    m_keyLeft = false;
-    m_keyRight = false;
-    m_maxForwardSpeed = 30.0f;
+    m_keyLeft     = false;
+    m_keyRight    = false;
+    m_maxForwardSpeed  = 30.0f;
     m_maxBackwardSpeed = 15.0f;
-    m_acceleration = 40.0f;
-    m_brakeDecel = 60.0f;
-    m_friction = 18.0f;
-    m_turnSpeed = 2.8f;
-    m_maxLeanAngle = Ogre::Degree(38.0f).valueRadians();
-    m_leanSpeed = 7.0f;
-    m_trailTTL = 12.0f;
-    m_trailMinDist = 0.35f;
-    m_trailColumnSize = 0.8f;
-    m_trailColumnHeight = 3.0f;
-    m_time = 0.0f;
+    m_acceleration     = 40.0f;
+    m_brakeDecel       = 60.0f;
+    m_friction         = 18.0f;
+    m_turnSpeed        = 2.8f;
+    m_maxLeanAngle     = Ogre::Degree(38.0f).valueRadians();
+    m_leanSpeed        = 7.0f;
+    m_trailTTL         = 12.0f;
+    m_trailMinDist     = 0.35f;
+    m_trailColumnSize  = 0.8f;
+    m_trailColumnHeight= 3.0f;
+    m_time       = 0.0f;
     m_lastTimeMs = 0;
-    m_bike.pos = QVector3D(0.0f, 0.0f, 0.0f);
-    m_bike.yaw = 0.0f;
+    m_roundOver   = false;
+    m_playerRank  = 0;
+    m_deadCount   = 0;
+    if (m_botCount < 1)  m_botCount = 3;
+    if (m_roundsCount < 1) m_roundsCount = 3;
+    m_currentRound = 1;
+
+    m_bike.pos   = QVector3D(0.0f, 0.0f, 0.0f);
+    m_bike.yaw   = 0.0f;
     m_bike.speed = 0.0f;
-    m_bike.lean = 0.0f;
+    m_bike.lean  = 0.0f;
     m_bike.color = QVector3D(0.0f, 0.8f, 1.0f);
     m_bike.human = true;
     m_bike.alive = true;
     m_bike.prevPos = m_bike.pos;
     m_bike.currPos = m_bike.pos;
     m_bike.aiTurnTimer = 0.0f;
-    m_bike.aiTurnDir = 0.0f;
+    m_bike.aiTurnDir   = 0.0f;
+
     m_bikes.clear();
     m_bikeTrails.clear();
-
 
     pauseWindow = new GamePauseWindow(this);
 
     connect(pauseWindow, &GamePauseWindow::resumeGame, this, [this]() {
         m_paused = false;
     });
-
     connect(pauseWindow, &GamePauseWindow::cancelPause, this, [this]() {
-    m_paused = false;
-});
-
+        m_paused = false;
+    });
     connect(pauseWindow, &GamePauseWindow::restartGame, this, [this]() {
         resetGame();
         m_paused = false;
     });
-
     connect(pauseWindow, &GamePauseWindow::exitToMenu, this, [this]() {
         m_paused = false;
         emit exitToMainMenu();
     });
+    if (m_botCount < 1)
+        m_botCount = 1;
 
-    int botCount = 4;
-    int total = 1 + botCount;
-
+    int total = 1 + m_botCount;      
     m_bikes.resize(total);
     m_bikeTrails.resize(total);
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+    m_totalBots = m_botCount;
+    m_aliveBots = m_botCount;
+
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
 
     QVector3D colors[5] = {
         QVector3D(0.0f, 0.8f, 1.0f),
@@ -89,33 +97,39 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
         QVector3D(1.0f, 0.8f, 0.2f),
         QVector3D(0.8f, 0.3f, 1.0f)
     };
+
     float spawnRadius = m_mapHalfSize * 0.6f;
 
     for (int i = 0; i < total; ++i) {
         Bike& b = m_bikes[i];
-        float angle = (static_cast<float>(i) / static_cast<float>(total)) * 2.0f * static_cast<float>(M_PI);
-        float x = std::cos(angle) * spawnRadius * 0.3f, z = std::sin(angle) * spawnRadius * 0.3f;
 
-        b.pos   = QVector3D(x, 0.0f, z);
-        b.yaw   = -angle + static_cast<float>(M_PI);
-        b.speed = 0.0f;
-        b.lean  = 0.0f;
-        b.color = colors[i % 5];
-        b.human = (i == 0);
-        b.alive = true;
+        float angle = (static_cast<float>(i) / static_cast<float>(total)) * 2.0f * static_cast<float>(M_PI);
+        float x = std::cos(angle) * spawnRadius * 0.3f;
+        float z = std::sin(angle) * spawnRadius * 0.3f;
+
+        b.pos  = QVector3D(x, 0.0f, z);
+        b.yaw  = -angle + static_cast<float>(M_PI);
+        b.speed= 0.0f;
+        b.lean = 0.0f;
+
+        b.color= colors[i % 5];
+        b.human= (i == 0);     
+        b.alive= true;
+
         b.prevPos = b.pos;
         b.currPos = b.pos;
+
         b.aiTurnTimer = 0.5f + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
         b.aiTurnDir   = 0.0f;
+
         m_bikeTrails[i].clear();
         TrailPoint tp;
-        tp.pos = b.pos;
+        tp.pos  = b.pos;
         tp.time = m_time;
         m_bikeTrails[i].push_back(tp);
     }
-
-    if (!m_bikes.empty()) m_camTarget = m_bikes[0].pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
-
+    if (!m_bikes.empty())
+        m_camTarget = m_bikes[0].pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
     m_timer.start();
     m_lastTimeMs = m_timer.elapsed();
     m_tickTimer = new QTimer(this);
@@ -127,8 +141,19 @@ GameProcess::~GameProcess() {}
 
 void GameProcess::setFieldSize(int n) {
     m_fieldSize = std::max(10, n);
-    m_gridSize = m_fieldSize;
+    m_gridSize  = m_fieldSize;
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
+}
+
+void GameProcess::setBotCount(int n)
+{
+    m_botCount = std::max(1, n);
+}
+
+void GameProcess::setRoundsCount(int n)
+{
+    m_roundsCount  = std::max(1, n);
+    m_currentRound = 1;
 }
 
 void GameProcess::initializeGL() {
@@ -141,12 +166,16 @@ void GameProcess::initializeGL() {
 
 void GameProcess::killBike(int idx)
 {
-    if (idx < 0 || idx >= static_cast<int>(m_bikes.size())) return;
+    if (idx < 0 || idx >= static_cast<int>(m_bikes.size()))
+        return;
     Bike& b = m_bikes[idx];
-    if (!b.alive) return;
-
+    if (!b.alive)
+        return;
     b.alive = false;
     ++m_deadCount;
+
+    if (!b.human && m_aliveBots > 0)
+        --m_aliveBots;
 
     if (b.human) {
         int total = static_cast<int>(m_bikes.size());
@@ -178,39 +207,76 @@ void GameProcess::paintGL() {
     }
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     setupProjection();
     setupView();
     drawScene3D();
 
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
+
+    QFont f = p.font();
+    f.setPointSize(18);
+    f.setBold(true);
+    p.setFont(f);
     p.setPen(QPen(Qt::white));
+
+    QString roundStr;
+    if (m_currentRound <= m_roundsCount)
+        roundStr = QString("ROUND %1 / %2").arg(m_currentRound).arg(m_roundsCount);
+    else
+        roundStr = QString("ROUND %1 / %2").arg(m_roundsCount).arg(m_roundsCount);
+
+    p.drawText(QRect(10, 10, width() - 20, 40),
+               Qt::AlignLeft | Qt::AlignVCenter,
+               roundStr);
+
+    QString botsStr = QString("BOTS: %1 / %2")
+                          .arg(m_aliveBots)
+                          .arg(m_totalBots);
+    p.drawText(QRect(0, 10, width(), 40),
+               Qt::AlignHCenter | Qt::AlignVCenter,
+               botsStr);
+
     if (m_roundOver) {
-        QFont f = p.font();
-        f.setPointSize(36);
-        f.setBold(true);
-        p.setFont(f);
+        QFont f2 = p.font();
+        f2.setPointSize(36);
+        f2.setBold(true);
+        p.setFont(f2);
         p.setPen(QPen(Qt::red));
         p.drawText(rect(), Qt::AlignCenter, m_roundText);
     }
-
-
 }
 
 void GameProcess::keyPressEvent(QKeyEvent* event)
 {
     if (event->isAutoRepeat()) {
-        QOpenGLWidget::keyPressEvent(event);
-
-        return;
-    }
+    QOpenGLWidget::keyPressEvent(event);
+    return;
+}
 
     if (m_roundOver) {
-        m_roundOver = false;
-        resetGame();                  
-        QOpenGLWidget::keyPressEvent(event);
+    if (m_matchOver) {
+        QString stats = QString("МАТЧ ОКОНЧЕН\n\nПОБЕД: %1\nПОРАЖЕНИЙ: %2")
+                            .arg(m_roundsWon)
+                            .arg(m_roundsLost);
+
+        QMessageBox msg(this);
+        msg.setWindowTitle("Статистика матча");
+        msg.setText(stats);
+        msg.setStandardButtons(QMessageBox::Ok);
+        msg.exec();
+
+        emit exitToMainMenu();
         return;
     }
+
+    m_roundOver = false;
+    resetGame();
+    QOpenGLWidget::keyPressEvent(event);
+    return;
+    }
+
 
     switch (event->key()) {
     case Qt::Key_W:
@@ -418,7 +484,7 @@ void GameProcess::updateSimulation(float dt)
                     else
                         turnInput = 1.0f;
                 
-                    turnInput *= 0.7f + 0.6f * (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX));
+                    turnInput *= 0.4f + 0.4f * (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX));
                 } else {
                     b.aiTurnTimer -= dt;
                     if (b.aiTurnTimer <= 0.0f) {
@@ -527,22 +593,38 @@ void GameProcess::updateSimulation(float dt)
     }
 
     if (!m_roundOver) {
-        int aliveCount = 0;
-        for (int i = 0; i < n; ++i)
-            if (m_bikes[i].alive) ++aliveCount;
+    int aliveCount = 0;
+    for (int i = 0; i < n; ++i)
+        if (m_bikes[i].alive) ++aliveCount;
 
-        if (aliveCount <= 1) {
-            m_roundOver = true;
+    if (aliveCount <= 1) {
+        m_roundOver = true;
 
-            int total = n;
-            if (m_bikes[0].alive) {
-                m_playerRank = 1;
-            } else if (m_playerRank == 0) {
-                m_playerRank = total - m_deadCount + 1;
-            }
+        int total = n;
+        bool playerAlive = m_bikes[0].alive;
 
-            m_roundText = QString("РАУНД ЗАКОНЧЕН\nВы заняли %1 место").arg(m_playerRank);
+        if (playerAlive) {
+            m_playerRank = 1;
+            ++m_roundsWon;
+        } else if (m_playerRank == 0) {
+            m_playerRank = total - m_deadCount + 1;
+            ++m_roundsLost;
         }
+
+        if (m_currentRound < m_roundsCount)
+            ++m_currentRound;
+
+        if (m_currentRound > m_roundsCount) {
+            m_matchOver = true;
+            m_roundText = QString("МАТЧ ОКОНЧЕН\nПОБЕД: %1  ПОРАЖЕНИЙ: %2")
+                              .arg(m_roundsWon)
+                              .arg(m_roundsLost);
+        } else {
+            m_roundText = "РАУНД ЗАКОНЧЕН\nНажмите любую клавишу";
+        }
+    }
+
+
     }
 
     if (!m_roundOver) {
@@ -651,31 +733,25 @@ void GameProcess::showEvent(QShowEvent* event)
 
 void GameProcess::resetGame()
 {
-    m_time   = 0.0f;
-    m_paused = false;
+    m_roundOver  = false;
+    m_deadCount  = 0;
+    m_playerRank = 0;
 
-    m_bike.pos  = QVector3D(0.0f, 0.0f, 0.0f);
-    m_bike.yaw  = 0.0f;
-    m_bike.speed = 0.0f;
-    m_bike.lean  = 0.0f;
-    m_bike.color = QVector3D(0.0f, 0.8f, 1.0f);
-    m_bike.human = true;
-    m_bike.alive = true;
-    m_bike.prevPos = m_bike.pos;
-    m_bike.currPos = m_bike.pos;
-    m_bike.aiTurnTimer = 0.0f;
-    m_bike.aiTurnDir   = 0.0f;
+    if (m_botCount < 1)
+        m_botCount = 1;
 
+    int total = 1 + m_botCount;     
     m_bikes.clear();
     m_bikeTrails.clear();
-
-    int botCount = 4;      
-    int total    = 1 + botCount;
-
     m_bikes.resize(total);
     m_bikeTrails.resize(total);
 
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    m_totalBots = m_botCount;
+    m_aliveBots = m_botCount;
+
+    m_time = 0.0f;
+
+    std::srand(static_cast<unsigned>(std::time(nullptr)));
 
     QVector3D colors[5] = {
         QVector3D(0.0f, 0.8f, 1.0f),
@@ -685,45 +761,43 @@ void GameProcess::resetGame()
         QVector3D(0.8f, 0.3f, 1.0f)
     };
 
-    float spawnRadius = m_mapHalfSize * 0.6f;
+    float spawnRadius = m_mapHalfSize * 0.75f;   
 
-    for (int i = 0; i < total; ++i) {
-        Bike& b = m_bikes[i];
+for (int i = 0; i < total; ++i) {
+    Bike& b = m_bikes[i];
 
-        float angle = (static_cast<float>(i) / static_cast<float>(total))
-                    * 2.0f * static_cast<float>(M_PI);
-        float x = std::cos(angle) * spawnRadius * 0.3f;
-        float z = std::sin(angle) * spawnRadius * 0.3f;
+    float baseAngle = (static_cast<float>(i) / static_cast<float>(total)) * 2.0f * static_cast<float>(M_PI);
+    float jitter    = (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.4f;
+    float angle     = baseAngle + jitter;
 
-        b.pos   = QVector3D(x, 0.0f, z);
-        b.yaw   = -angle + static_cast<float>(M_PI);
-        b.speed = 0.0f;
-        b.lean  = 0.0f;
-        b.color = colors[i % 5];
-        b.human = (i == 0);
-        b.alive = true;
-        b.prevPos = b.pos;
-        b.currPos = b.pos;
-        b.aiTurnTimer = 0.5f + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
-        b.aiTurnDir   = 0.0f;
+    float radiusJitter = 0.15f * spawnRadius;
+    float r            = spawnRadius - radiusJitter +
+                         (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) * radiusJitter;
 
-        m_bikeTrails[i].clear();
-        TrailPoint tp;
-        tp.pos  = b.pos;
-        tp.time = m_time;
-        m_bikeTrails[i].push_back(tp);
-    }
+    float x = std::cos(angle) * r;
+    float z = std::sin(angle) * r;
 
-    if (!m_bikes.empty()) {
-        m_camTarget = m_bikes[0].pos + QVector3D(0.0f, m_camTargetHeight, 0.0f);
-    }
+    b.pos  = QVector3D(x, 0.0f, z);
+    b.yaw  = -angle + static_cast<float>(M_PI); 
+    b.speed= 0.0f;
+    b.lean = 0.0f;
 
-    if (m_timer.isValid())
-        m_lastTimeMs = m_timer.elapsed();
-    else {
-        m_timer.start();
-        m_lastTimeMs = m_timer.elapsed();
-    }
+    b.color= colors[i % 5];
+    b.human= (i == 0);
+    b.alive= true;
+
+    b.prevPos = b.pos;
+    b.currPos = b.pos;
+
+    b.aiTurnTimer = 0.5f + static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
+    b.aiTurnDir   = 0.0f;
+
+    m_bikeTrails[i].clear();
+    TrailPoint tp;
+    tp.pos  = b.pos;
+    tp.time = m_time;
+    m_bikeTrails[i].push_back(tp);
+}
 }
 
 void GameProcess::drawBike()

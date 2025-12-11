@@ -12,7 +12,7 @@ public:
     explicit mainwindow(QWidget * parent = nullptr);
 public slots:
     void showMenu();
-    void startGame(int fieldSize, int botsCount);
+    void startGame(int fieldSize, int botsCount, int roundsCount);
 private:
     QStackedWidget* stacked;
     MainMenuWidget* menu;

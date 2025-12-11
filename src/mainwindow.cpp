@@ -17,12 +17,14 @@ void mainwindow::showMenu() {
     if (stacked && menu) stacked->setCurrentWidget(menu);
 }
 
-void mainwindow::startGame(int fieldSize, int botsCount) {
+void mainwindow::startGame(int fieldSize, int botsCount,int roundsCount) {
     Q_UNUSED(botsCount);
 
     if (!stacked || !game_proc_window) return;
 
     game_proc_window->setFieldSize(fieldSize);
+    game_proc_window->setBotCount(botsCount);
+    game_proc_window->setRoundsCount(roundsCount);
     stacked->setCurrentWidget(game_proc_window);
     game_proc_window->setFocus();
 }
