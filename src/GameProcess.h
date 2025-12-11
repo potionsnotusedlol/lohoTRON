@@ -7,7 +7,6 @@
 #include <cmath>
 #include <ctime>
 #include <cstdlib>
-#include <cmath>
 #include <Ogre.h>
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
@@ -18,16 +17,22 @@
 #include <QElapsedTimer>
 #include <QTimer>
 #include <QVector3D>
+#include <QMessageBox>
+#include <QMessageBox>
 #include <QPoint>
 #include <QMatrix4x4>
 #include "GamePauseWindow.h"
-#include "SettingsWindow.h"
 
 class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
 public:
     explicit GameProcess(QWidget* parent = nullptr);
+    ~GameProcess() override;
+
     void setFieldSize(int n);
+    void setBotCount(int n);        
+    void setRoundsCount(int n);     
+
 protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
@@ -40,11 +45,14 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
 
     GamePauseWindow* pauseWindow;
-    signals:
-        void exitToMainMenu();
-    private slots:
-        void onTick();
-    private:
+
+signals:
+    void exitToMainMenu();
+
+private slots:
+    void onTick();
+
+private:
     struct TrailPoint {
         QVector3D pos;
         float     time;
@@ -53,14 +61,14 @@ protected:
         QVector3D pos;
         QVector3D prevPos;
         QVector3D currPos;
-        float yaw;
-        float speed;
-        float lean;
+        float     yaw;
+        float     speed;
+        float     lean;
         QVector3D color;
-        bool human;
-        bool alive;
-        float aiTurnTimer;
-        float aiTurnDir;
+        bool      human;
+        bool      alive;
+        float     aiTurnTimer;
+        float     aiTurnDir;
     };
     void updateSimulation(float dt);
     void updateCamera(float dt);
@@ -79,26 +87,35 @@ protected:
     std::unique_ptr<Ogre::Root> m_root;
     Ogre::SceneManager*  m_scene_manager;
     Ogre::RenderWindow*  m_render_window;
-    int m_fieldSize;
-    int m_gridSize;
+    int   m_fieldSize;
+    int   m_gridSize;
     float m_cellSize;
     float m_mapHalfSize;
-    bool m_paused;
-    Bike m_bike;
+    bool  m_paused;
+    Bike  m_bike;
     std::vector<Bike> m_bikes;
     std::vector<std::vector<TrailPoint>> m_bikeTrails;
-    float m_camYaw;
-    float m_camPitch;
-    float m_camDistance;
-    float m_camDistanceCur;
-    float m_camTargetHeight;
-    float m_camSmooth;
+    float    m_camYaw;
+    float    m_camPitch;
+    float    m_camDistance;
+    float    m_camDistanceCur;
+    float    m_camTargetHeight;
+    float    m_camSmooth;
     QVector3D m_camTarget;
-    bool m_rmbDown;
-    bool m_mouseCaptured;
+
+    bool   m_rmbDown;
+    bool   m_mouseCaptured;
     QPoint m_lastMousePos;
-    float m_mouseSensitivity;
+    float  m_mouseSensitivity;
+    int m_botCount     = 3;  
+    int m_roundsCount  = 3;   
+    int m_currentRound = 1;   
+    int m_totalBots    = 0;   
+    int m_aliveBots    = 0;   
+    int m_roundsWon  = 0;
+    int m_roundsLost = 0;
     bool m_keyForward;
+    bool m_matchOver = false;
     bool m_keyBackward;
     bool m_keyLeft;
     bool m_keyRight;
@@ -109,21 +126,20 @@ protected:
     float m_friction;
     float m_turnSpeed;
     float m_maxLeanAngle;
-    bool m_roundOver = false;
-    int m_playerRank = 0;      
-    int m_deadCount = 0; 
+    bool   m_roundOver = false;
+    int    m_playerRank = 0;
+    int    m_deadCount = 0;
     QString m_roundText = "РАУНД ЗАКОНЧЕН\nНажмите любую клавишу";
-    float m_leanSpeed;
-    float m_trailTTL;
-    float m_trailMinDist;
-    float m_trailColumnSize;
-    float m_trailColumnHeight;
-    QElapsedTimer m_timer;
-    qint64 m_lastTimeMs;
-    float m_time;
-    QTimer* m_tickTimer;
-};
+    float  m_leanSpeed;
+    float  m_trailTTL;
+    float  m_trailMinDist;
+    float  m_trailColumnSize;
+    float  m_trailColumnHeight;
 
-QKeySequence loadKeyBind();
+    QElapsedTimer m_timer;
+    qint64        m_lastTimeMs;
+    float         m_time;
+    QTimer*       m_tickTimer;
+};
 
 #endif // GAMEPROCESS_H
