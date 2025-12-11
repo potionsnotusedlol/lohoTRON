@@ -27,8 +27,11 @@ class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
 public:
     explicit GameProcess(QWidget* parent = nullptr);
+<<<<<<< HEAD
     ~GameProcess() override;
 
+=======
+>>>>>>> 19e55b5 (reworked button behavior to be rebindable)
     void setFieldSize(int n);
     void setBotCount(int n);        
     void setRoundsCount(int n);     
