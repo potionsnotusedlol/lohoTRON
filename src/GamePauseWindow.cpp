@@ -4,7 +4,7 @@ namespace {
 
 struct PauseSettings {
     int window_width = 400, window_height = 450, animation_duration = 300;
-    QString background_color = "rgba(0, 0, 0, 230)", text_color = "cyan", border_color = "cyan", button_color = "rgb(73, 159, 104)", hover_color = "rgb(92, 184, 128)";
+    
 };
 
 PauseSettings loadPauseSettings() {
@@ -49,8 +49,7 @@ void GamePauseWindow::setupUI() {
     main_layout->addWidget(exit_button, 0, Qt::AlignCenter);
     main_layout->addStretch();
     
-    int button_width = settings.window_width * 0.8;
-    int button_height = settings.window_height * 0.12;
+    int button_width = settings.window_width * 0.95, button_height = settings.window_height * 0.2;
     
     resume_button->setFixedSize(button_width, button_height);
     restart_button->setFixedSize(button_width, button_height);
@@ -61,13 +60,11 @@ void GamePauseWindow::applyStyles() {
     const PauseSettings &settings = pauseSettings();
     
     setStyleSheet(
-        QString(
-            "background-color: %1;"
-            "color: %2;"
-            "border: 2px solid %3;"
-            "border-radius: 15px;"
-            "font-family: \"Bolgarus Beta\";"
-        ).arg(settings.background_color, settings.text_color, settings.border_color)
+        "background-color: rgba(0, 0, 0, 230);"
+        "color: cyan;"
+        "border: 2px solid cyan;"
+        "border-radius: 10px;"
+        "font-family: \"Bolgarus Beta\";"
     );
     pause_label->setStyleSheet(
         "font-size: 96pt;"
@@ -79,43 +76,54 @@ void GamePauseWindow::applyStyles() {
     QString button_style = QString(
         "QPushButton {"
             "font-size: 48pt;"
-            "font-family: \"FREE FAT FONT\";"
+            "font-family: \"Wattauchimma\";"
+            "font-weight: bold;"
             "color: black;"
             "border: none;"
             "border-radius: 10px;"
             "padding: 10px;"
-            "background-color: %1;"
+            "background-color: rgb(127, 176, 105);"
         "}"
-        "QPushButton:hover {"
-            "background-color: %2;"
-        "}"
-    ).arg(settings.button_color, settings.hover_color);
+        "QPushButton:hover { background-color: rgb(221, 255, 247); }"
+    );
     
     resume_button->setStyleSheet(button_style);
     restart_button->setStyleSheet(button_style);
-    exit_button->setStyleSheet(button_style);
+    exit_button->setStyleSheet(
+         "QPushButton {"
+            "font-size: 48pt;"
+            "font-family: \"Wattauchimma\";"
+            "font-weight: bold;"
+            "color: black;"
+            "border: none;"
+            "border-radius: 10px;"
+            "padding: 10px;"
+            "background-color: rgb(61, 19, 8);"
+        "}"
+        "QPushButton:hover { background-color: rgb(255, 175, 240); }"
+    );
     
     auto pause_label_glow = new QGraphicsDropShadowEffect(pause_label);
     pause_label_glow->setBlurRadius(30);
-    pause_label_glow->setColor(qRgb(0, 255, 255));
+    pause_label_glow->setColor(qRgb(127, 176, 105));
     pause_label_glow->setOffset(0, 0);
     pause_label->setGraphicsEffect(pause_label_glow);
     
     auto resume_glow = new QGraphicsDropShadowEffect(resume_button);
     resume_glow->setBlurRadius(20);
-    resume_glow->setColor(qRgb(73, 159, 104));
+    resume_glow->setColor(qRgb(127, 176, 105));
     resume_glow->setOffset(0, 0);
     resume_button->setGraphicsEffect(resume_glow);
     
     auto restart_glow = new QGraphicsDropShadowEffect(restart_button);
     restart_glow->setBlurRadius(20);
-    restart_glow->setColor(qRgb(73, 159, 104));
+    restart_glow->setColor(qRgb(127, 176, 105));
     restart_glow->setOffset(0, 0);
     restart_button->setGraphicsEffect(restart_glow);
     
     auto exit_glow = new QGraphicsDropShadowEffect(exit_button);
     exit_glow->setBlurRadius(20);
-    exit_glow->setColor(qRgb(192, 50, 113));
+    exit_glow->setColor(qRgb(61, 19, 8));
     exit_glow->setOffset(0, 0);
     exit_button->setGraphicsEffect(exit_glow);
 }

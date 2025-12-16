@@ -271,6 +271,13 @@ void GameProcess::keyPressEvent(QKeyEvent* event) {
     else if (event->key() == key_backward || event->key() == Qt::Key_Down) m_keyBackward = true;
     else if (event->key() == key_left || event->key() == Qt::Key_Left) m_keyLeft = true;
     else if (event->key() == key_right || event->key() == Qt::Key_Right) m_keyRight = true;
+    else if (event->key() == Qt::Key_Escape) {
+        if (pauseWindow->isVisible()) pauseWindow->reject();
+        else {
+            m_paused = true;
+            pauseWindow->exec();
+        }
+    }
 
     QOpenGLWidget::keyPressEvent(event);
 }
