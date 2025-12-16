@@ -3,7 +3,6 @@
 // check comments in SettingsWindow.cpp
 QuitGameWindow::QuitGameWindow(QWidget* parent) : QDialog(parent) {
     fade_animation = new QPropertyAnimation(this, "windowOpacity", this);
-
     setWindowOpacity(0.0);
     setWindowTitle("Quit game confirmation");
     resize(400, 300);
@@ -49,22 +48,19 @@ QuitGameWindow::QuitGameWindow(QWidget* parent) : QDialog(parent) {
         "background: transparent;"
     );
 
-    auto *quit_label_glow = new QGraphicsDropShadowEffect(quit_label);
-    
+    auto *quit_label_glow = new QGraphicsDropShadowEffect(quit_label);  
     quit_label_glow->setBlurRadius(24);
     quit_label_glow->setColor(qRgb(0, 255, 255));
     quit_label_glow->setOffset(0, 0);
     quit_label->setGraphicsEffect(quit_label_glow);
 
     auto *confirm_glow = new QGraphicsDropShadowEffect(confirm_quit_button);
-
     confirm_glow->setBlurRadius(20);
     confirm_glow->setColor(qRgb(192, 50, 33));
     confirm_glow->setOffset(0, 0);
     confirm_quit_button->setGraphicsEffect(confirm_glow);
 
     auto *cancel_glow = new QGraphicsDropShadowEffect(cancel_quit_button);
-
     cancel_glow->setBlurRadius(20);
     cancel_glow->setColor(qRgb(0, 255, 255));
     cancel_glow->setOffset(0, 0);
@@ -77,13 +73,11 @@ QuitGameWindow::QuitGameWindow(QWidget* parent) : QDialog(parent) {
                 closing = true;
 
                 auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
-
                 fade_out->setDuration(300);
                 fade_out->setStartValue(windowOpacity());
                 fade_out->setEndValue(0.0);
 
                 connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
-
                 fade_out->start(QAbstractAnimation::DeleteWhenStopped);
             }
         }
@@ -122,7 +116,6 @@ void QuitGameWindow::closeEvent(QCloseEvent* event) {
         fade_out->setEndValue(0.0);
 
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
-
         fade_out->start(QAbstractAnimation::DeleteWhenStopped);
     }
     else QDialog::closeEvent(event);

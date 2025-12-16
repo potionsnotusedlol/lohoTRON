@@ -43,6 +43,7 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_roundOver = false;
     m_playerRank = 0;
     m_deadCount = 0;
+
     if (m_botCount < 1) m_botCount = 3;
 
     if (m_roundsCount < 1) m_roundsCount = 3;
@@ -65,14 +66,18 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
 
     connect(pauseWindow, &GamePauseWindow::resumeGame, this, [this]() { m_paused = false; });
     connect(pauseWindow, &GamePauseWindow::cancelPause, this, [this]() { m_paused = false; });
-    connect(pauseWindow, &GamePauseWindow::restartGame, this, [this]() {
-        resetGame();
-        m_paused = false;
-    });
-    connect(pauseWindow, &GamePauseWindow::exitToMenu, this, [this]() {
-        m_paused = false;
-        emit exitToMainMenu();
-    });
+    connect(pauseWindow, &GamePauseWindow::restartGame, this,
+        [this]() {
+            resetGame();
+            m_paused = false;
+        }
+    );
+    connect(pauseWindow, &GamePauseWindow::exitToMenu, this,
+        [this]() {
+            m_paused = false;
+            emit exitToMainMenu();
+        }
+    );
 
     if (m_botCount < 1) m_botCount = 1;
 
@@ -131,14 +136,14 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
 
 void GameProcess::setFieldSize(int n) {
     m_fieldSize = std::max(10, n);
-    m_gridSize  = m_fieldSize;
+    m_gridSize = m_fieldSize;
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
 }
 
 void GameProcess::setBotCount(int n) { m_botCount = std::max(1, n); }
 
 void GameProcess::setRoundsCount(int n) {
-    m_roundsCount  = std::max(1, n);
+    m_roundsCount = std::max(1, n);
     m_currentRound = 1;
 }
 
@@ -267,36 +272,6 @@ void GameProcess::keyPressEvent(QKeyEvent* event) {
     else if (event->key() == key_left || event->key() == Qt::Key_Left) m_keyLeft = true;
     else if (event->key() == key_right || event->key() == Qt::Key_Right) m_keyRight = true;
 
-    // switch (event->key()) {
-    // case Qt::Key_W:
-    // case Qt::Key_Up:
-    //     m_keyForward = true;
-    //     break;
-    // case Qt::Key_S:
-    // case Qt::Key_Down:
-    //     m_keyBackward = true;
-    //     break;
-    // case Qt::Key_A:
-    // case Qt::Key_Left:
-    //     m_keyLeft = true;
-    //     break;
-    // case Qt::Key_D:
-    // case Qt::Key_Right:
-    //     m_keyRight = true;
-    //     break;
-    // case Qt::Key_Space:
-    //     break;
-    // case Qt::Key_Escape:
-    // if (pauseWindow->isVisible()) pauseWindow->reject();
-    // else {
-    //     m_paused = true;
-    //     pauseWindow->exec();
-    // }
-    // break;
-    // default:
-    //     break;
-    // }
-
     QOpenGLWidget::keyPressEvent(event);
 }
 
@@ -316,27 +291,6 @@ void GameProcess::keyReleaseEvent(QKeyEvent* event) {
     else if (event->key() == key_backward|| event->key() == Qt::Key_Down) m_keyBackward = false;
     else if (event->key() == key_left || event->key() == Qt::Key_Left) m_keyLeft = false;
     else if (event->key() == key_right || event->key() == Qt::Key_Right) m_keyRight = false;
-
-    // switch (event->key()) {
-    // case Qt::Key_W:
-    // case Qt::Key_Up:
-    //     m_keyForward = false;
-    //     break;
-    // case Qt::Key_S:
-    // case Qt::Key_Down:
-    //     m_keyBackward = false;
-    //     break;
-    // case Qt::Key_A:
-    // case Qt::Key_Left:
-    //     m_keyLeft = false;
-    //     break;
-    // case Qt::Key_D:
-    // case Qt::Key_Right:
-    //     m_keyRight = false;
-    //     break;
-    // default:
-    //     break;
-    // }
 
     QOpenGLWidget::keyReleaseEvent(event);
 }
@@ -497,7 +451,6 @@ void GameProcess::updateSimulation(float dt) {
             }
         }
 
-
         float turnSpeed = m_turnSpeed, currentTurnSpeed = 0.0f;
 
         if (turnInput > 0.0f) currentTurnSpeed = turnSpeed;
@@ -607,6 +560,7 @@ void GameProcess::updateSimulation(float dt) {
 
     if (!m_roundOver) {
         int aliveCount = 0;
+        
         for (int i = 0; i < n; ++i) if (m_bikes[i].alive) ++aliveCount;
 
         if (aliveCount <= 1) {

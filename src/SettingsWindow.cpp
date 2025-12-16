@@ -49,80 +49,7 @@ void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox/* , QPushButton
 
         if (idx != -1) colorBox->setCurrentIndex(idx);
     } else if (colorBox->count() > 0) colorBox->setCurrentIndex(0);
-
-    // QJsonArray keyArray = player.value("key_bindings").toArray();
-
-    // if (!keyArray.isEmpty()) {
-    //     QStringList keys;
-
-
-    //     for (const QJsonValue &v : keyArray) {
-    //         const QString k = v.toString();
-
-    //         if (!k.isEmpty()) keys << k;
-    //     }
-
-
-    //     if (!keys.isEmpty()) {
-    //         keyButton->setText(keys.join(" / "));
-
-    //         return;
-    //     }
-    // }
-
-    // const QString keyBind = player.value("key_binding").toString();
-
-    // if (!keyBind.isEmpty()) keyButton->setText(keyBind);
 }
-
-// class KeyCaptureDialog : public QDialog {
-// public:
-//     explicit KeyCaptureDialog(QWidget* parent = nullptr) : QDialog(parent) {
-//         setModal(true);
-//         setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-//         setAttribute(Qt::WA_TranslucentBackground, true);
-//         resize(250, 120);
-
-//         auto* layout = new QVBoxLayout(this);
-//         auto* label  = new QLabel("Press a key\n(ESC to cancel)", this);
-//         label->setAlignment(Qt::AlignCenter);
-//         layout->addWidget(label);
-//     }
-
-//     QString sequence() const { return m_sequence; }
-// protected:
-//     void keyPressEvent(QKeyEvent* event) override {
-//         if (event->key() == Qt::Key_Escape) {
-//             m_sequence.clear();
-//             reject();
-
-//             return;
-//         }
-
-//         int key = event->key();
-
-//         if (key == Qt::Key_Shift || key == Qt::Key_Control || key == Qt::Key_Alt || key == Qt::Key_Meta || key == Qt::Key_AltGr) return;
-
-//         Qt::KeyboardModifiers mods = event->modifiers();
-//         QKeySequence seq(mods | key);
-
-//         m_sequence = seq.toString(QKeySequence::NativeText);
-//         accept();
-//     }
-
-// private:
-//     QString m_sequence;
-// };
-
-// QString captureKeySequence(QWidget* parent) {
-//     KeyCaptureDialog dlg(parent);
-
-//     dlg.exec();
-
-//     if (dlg.exec() == QDialog::Accepted) return dlg.sequence();
-
-//     return QString{};
-// }
 
 SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     fade_in_animation = new QPropertyAnimation(this, "windowOpacity", this);
@@ -169,7 +96,6 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     
     // SETTINGS LABEL
     auto *text_glow = new QGraphicsDropShadowEffect(settings_label);
-
     text_glow->setBlurRadius(12);
     text_glow->setColor(qRgb(0, 255, 255));
     text_glow->setOffset(0, 0);
@@ -182,7 +108,6 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
 
     // RENAME PLAYER LINE EDIT
     auto *rename_hint_glow = new QGraphicsDropShadowEffect(player_name_hint);
-
     rename_hint_glow->setBlurRadius(12);
     rename_hint_glow->setColor(qRgb(192, 50, 33));
     rename_hint_glow->setOffset(0, 0);
@@ -307,26 +232,7 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
         }
     );
     connect(key_rebinding_button, &QPushButton::clicked, this,
-        [this/* , key_rebinding_button */]() {
-            // QStringList keys;
-
-            // for (int i = 0; i < 4; ++i) {
-            //     key_rebinding_button->setText(QString("PRESS %1/4").arg(i + 1));
-
-            //     QString seq = captureKeySequence(this);
-
-            //     if (seq.isEmpty()) {
-            //         keys.clear();
-
-            //         break;
-            //     }
-
-            //     keys << seq;
-            // }
-
-            // if (keys.isEmpty()) key_rebinding_button->setText("KEY\nBINDINGS");
-            // else key_rebinding_button->setText(keys.join(" / "));
-
+        [this]() {
             KeyCaptureDialog capture_dlg(this);
             capture_dlg.exec();
         }

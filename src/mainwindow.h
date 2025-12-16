@@ -16,7 +16,7 @@ public slots:
 private:
     QStackedWidget* stacked;
     MainMenuWidget* menu;
-    GameProcess*    game_proc_window;
+    GameProcess* game_proc_window;
 };
 
 #endif // MAINWINDOW_H

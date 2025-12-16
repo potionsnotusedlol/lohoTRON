@@ -10,12 +10,9 @@ mainwindow::mainwindow(QWidget* parent) : QMainWindow(parent) {
     setCentralWidget(stacked);
     stacked->setCurrentWidget(menu);
     connect(game_proc_window, &GameProcess::exitToMainMenu, this, &mainwindow::showMenu);
-
 }
 
-void mainwindow::showMenu() {
-    if (stacked && menu) stacked->setCurrentWidget(menu);
-}
+void mainwindow::showMenu() { if (stacked && menu) stacked->setCurrentWidget(menu); }
 
 void mainwindow::startGame(int fieldSize, int botsCount,int roundsCount) {
     Q_UNUSED(botsCount);

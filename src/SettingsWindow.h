@@ -54,5 +54,4 @@ QJsonObject loadConfigRoot();
 void saveConfigRoot(const QJsonObject& root);
 void loadPlayerSettings(QLineEdit* nameEdit, QComboBox* colorBox, QPushButton* keyButton);
 
-
 #endif // SETTINGSWINDOW_H

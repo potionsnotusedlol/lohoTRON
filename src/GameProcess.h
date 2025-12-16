@@ -65,6 +65,7 @@ private:
         float aiTurnTimer;
         float aiTurnDir;
     };
+
     void updateSimulation(float dt);
     void updateCamera(float dt);
     void updateTrail(float dt);
@@ -130,7 +131,6 @@ private:
     float m_trailMinDist;
     float m_trailColumnSize;
     float m_trailColumnHeight;
-
     QElapsedTimer m_timer;
     qint64 m_lastTimeMs;
     float m_time;

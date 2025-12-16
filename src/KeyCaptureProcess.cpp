@@ -83,7 +83,6 @@ void KeyCaptureProcess::closeEvent(QCloseEvent* event) {
         
         connect(fade_out, &QPropertyAnimation::finished, this, [this]() { QDialog::close(); });
         fade_out->start(QAbstractAnimation::DeleteWhenStopped);
-
     } else QDialog::closeEvent(event);
 }
 

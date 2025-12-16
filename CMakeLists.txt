@@ -75,7 +75,7 @@ if(APPLE)
         "-framework OgreOverlay"
         "-framework OpenGL"
     )
-elseif(UNIX)
+elseif(UNIX OR WIN32)
     target_link_libraries(lohoTRON PRIVATE 
         Qt6::Core 
         Qt6::Widgets 
@@ -93,12 +93,21 @@ elseif(UNIX)
     endif()
 endif()
 
-
 target_include_directories(lohoTRON PRIVATE ${OGRE_INCLUDE_DIRS})
+
 # --- SDL2 ---
-find_package(SDL2 REQUIRED)
-target_include_directories(lohoTRON PRIVATE ${SDL2_INCLUDE_DIRS})
-target_link_libraries(lohoTRON PRIVATE ${SDL2_LIBRARIES})
+if (WIN32)
+    target_link_libraries(lohoTRON PRIVATE
+        winmm
+        imm32
+        version
+        opengl32
+    )
+endif()
+
+find_package(SDL2 CONFIG REQUIRED)
+# target_include_directories(lohoTRON PRIVATE ${SDL2_INCLUDE_DIRS})
+target_link_libraries(lohoTRON PRIVATE SDL2::SDL2)
 # --- Configuration files for OGRE ---
 configure_file(plugins.cfg.in plugins.cfg @ONLY)
 configure_file(resources.cfg.in resources.cfg @ONLY)
@@ -110,7 +119,9 @@ elseif(APPLE)
     set_target_properties(lohoTRON PROPERTIES MACOSX_BUNDLE TRUE)
 endif()
 
-find_package(PkgConfig REQUIRED)
+if (UNIX OR APPLE)
+    find_package(PkgConfig REQUIRED)
+endif()
 
 if(UNIX AND NOT APPLE)
     find_package(X11 REQUIRED)
