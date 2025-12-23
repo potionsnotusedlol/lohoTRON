@@ -25,6 +25,12 @@ elseif(UNIX)
         set(OGRE_MEDIA_DIR "/snap/ogre/current/share/OGRE-14.4/Media")
         find_package(OGRE REQUIRED)
     endif()
+elseif(WIN32)
+    set(OGRE_DIR "C:/dev/ogre-contents/build/sdk/CMake")
+    set(OGRE_PLUGIN_DIR "C:/dev/ogre-contents/build/sdk/lib")
+    set(OGRE_MEDIA_DIR "C:/dev/ogre-contents/build/sdk/Media")
+    set(SDL2_DIR "C:/dev/vcpkg/installed/x64-windows/share/sdl2")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/release")
 endif()
 
 find_package(OGRE REQUIRED)
@@ -106,11 +112,10 @@ if (WIN32)
 endif()
 
 find_package(SDL2 CONFIG REQUIRED)
-# target_include_directories(lohoTRON PRIVATE ${SDL2_INCLUDE_DIRS})
 target_link_libraries(lohoTRON PRIVATE SDL2::SDL2)
 # --- Configuration files for OGRE ---
-configure_file(plugins.cfg.in plugins.cfg @ONLY)
-configure_file(resources.cfg.in resources.cfg @ONLY)
+configure_file(plugins.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins.cfg @ONLY)
+configure_file(resources.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources.cfg @ONLY)
 
 # --- Platform-specific tweaks ---
 if(WIN32)
@@ -133,8 +138,6 @@ if(UNIX AND NOT APPLE)
     endif()
 endif()
 
-configure_file(plugins.cfg.in plugins.cfg @ONLY)
-configure_file(resources.cfg.in resources.cfg @ONLY)
 include(GNUInstallDirs)
 install(TARGETS lohoTRON
     BUNDLE DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -172,7 +175,6 @@ endif()
 
 include("${Qt6Core_DIR}/Qt6CoreDeploySupport.cmake")
 set(DEPLOY_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/deploy_game_script.cmake")
-# install(FILES "${CMAKE_CURRENT_BINARY_DIR}/qt.conf" DESTINATION ${CMAKE_INSTALL_BINDIR})
 qt_generate_deploy_app_script(
     TARGET lohoTRON
     OUTPUT_SCRIPT DEPLOY_SCRIPT
