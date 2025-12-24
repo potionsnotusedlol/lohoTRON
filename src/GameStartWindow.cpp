@@ -5,9 +5,9 @@ namespace {
 
 struct GameDefaults {
     int field_size = 150;
-    int bots_default = 3;
+    int bots_default = 20;
     int bots_min = 1;
-    int bots_max = 10;
+    int bots_max = 50;
     int rounds_default = 3;
 };
 

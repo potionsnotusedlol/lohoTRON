@@ -30,7 +30,8 @@ public:
     explicit GameProcess(QWidget* parent = nullptr);
     void setFieldSize(int n);
     void setBotCount(int n);        
-    void setRoundsCount(int n);     
+    void setRoundsCount(int n);  
+    unsigned short getColor() const;
 protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;

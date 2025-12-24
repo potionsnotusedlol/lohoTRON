@@ -175,9 +175,16 @@ SettingsWindow::SettingsWindow(QWidget* parent) : QDialog(parent) {
     color_picker_dropdown->setEditable(true);
     color_picker_dropdown->lineEdit()->setReadOnly(true);
     color_picker_dropdown->lineEdit()->setAlignment(Qt::AlignCenter);
-    color_picker_dropdown->addItem("blue");
-    color_picker_dropdown->addItem("cyan");
-    color_picker_dropdown->addItem("red");
+    color_picker_dropdown->addItem("leaf");
+    color_picker_dropdown->setItemData(0, QColor(62, 86, 34), Qt::BackgroundRole);
+    color_picker_dropdown->addItem("marine");
+    color_picker_dropdown->setItemData(1, QColor(36, 110, 185), Qt::BackgroundRole);
+    color_picker_dropdown->addItem("dark");
+    color_picker_dropdown->setItemData(2, QColor(78, 2, 80), Qt::BackgroundRole);
+    color_picker_dropdown->addItem("pink");
+    color_picker_dropdown->setItemData(3, QColor(234, 154, 178), Qt::BackgroundRole);
+    color_picker_dropdown->addItem("grey");
+    color_picker_dropdown->setItemData(4, QColor(56, 77, 72), Qt::BackgroundRole);
     
     for (int i = 0; i < color_picker_dropdown->count(); ++i) color_picker_dropdown->setItemData(i, Qt::AlignCenter, Qt::TextAlignmentRole);
 

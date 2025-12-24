@@ -11,7 +11,7 @@ void createDefaultRoot() {
 
     QJsonObject player = root.value("player").toObject();
     player["name"] = "noname";
-    player["color"] = "blue";
+    player["color"] = "leaf";
 
     QJsonArray keys = {"W", "S", "A", "D"};
 
@@ -19,8 +19,8 @@ void createDefaultRoot() {
     root["player"] = player;
 
     QJsonObject env_set;
-    env_set["bots_count_default"] = 3;
-    env_set["bots_count_max"] = 10;
+    env_set["bots_count_default"] = 20;
+    env_set["bots_count_max"] = 50;
     env_set["bots_count_min"] = 1;
     env_set["field_size"] = 150;
     root["environment"] = env_set;
