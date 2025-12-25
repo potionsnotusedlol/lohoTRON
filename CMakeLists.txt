@@ -113,9 +113,15 @@ endif()
 
 find_package(SDL2 CONFIG REQUIRED)
 target_link_libraries(lohoTRON PRIVATE SDL2::SDL2)
+
 # --- Configuration files for OGRE ---
-configure_file(plugins.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins.cfg @ONLY)
-configure_file(resources.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources.cfg @ONLY)
+if (WIN32)
+    configure_file(plugins.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins.cfg @ONLY)
+    configure_file(resources.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources.cfg @ONLY)
+elif (UNIX AND NOT APPLE)
+    configure_file(plugins.cfg.in plugins.cfg @ONLY)
+    configure_file(resources.cfg.in resources.cfg @ONLY)
+endif()
 
 # --- Platform-specific tweaks ---
 if(WIN32)
