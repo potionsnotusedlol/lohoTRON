@@ -462,7 +462,6 @@ void GameProcess::updateSimulation(float dt) {
 
     for (int i = 0; i < n; ++i) {
         Bike& b = m_bikes[i];
-
         if (!b.alive) continue;
 
         b.prevPos = b.pos;
@@ -471,10 +470,8 @@ void GameProcess::updateSimulation(float dt) {
         bool moveForward = false;
 
         if (b.human) {
-            if (m_keyLeft) turnInput += 1.0f;
-
+            if (m_keyLeft)  turnInput += 1.0f;
             if (m_keyRight) turnInput -= 1.0f;
-
             moveForward = true;
         } else {
             moveForward = true;
@@ -512,7 +509,6 @@ void GameProcess::updateSimulation(float dt) {
 
                     if (diff.lengthSquared() <= avoidThreshold * avoidThreshold) {
                         float side = QVector3D::dotProduct(p - b.pos, rightDir);
-
                         avoidTurn = (side >= 0.0f) ? -1.0f : 1.0f;
                         needAvoid = true;
                         break;
@@ -538,7 +534,6 @@ void GameProcess::updateSimulation(float dt) {
                     turnInput *= 0.4f + 0.4f * (static_cast<float>(std::rand()) / RAND_MAX);
                 } else {
                     b.aiTurnTimer -= dt;
-
                     if (b.aiTurnTimer <= 0.0f) {
                         b.aiTurnTimer = 0.5f + static_cast<float>(std::rand()) / RAND_MAX * 1.5f;
 
@@ -548,7 +543,6 @@ void GameProcess::updateSimulation(float dt) {
                         else if (r > 0.7f) b.aiTurnDir = 1.0f;
                         else b.aiTurnDir = 0.0f;
                     }
-
                     turnInput = b.aiTurnDir;
                 }
             }
@@ -600,7 +594,6 @@ void GameProcess::updateSimulation(float dt) {
 
     for (int i = 0; i < n; ++i) {
         if (!m_bikes[i].alive) continue;
-
         Bike& A = m_bikes[i];
         float hitR2 = (bikeRadius + trailRadius) * (bikeRadius + trailRadius);
 
@@ -617,7 +610,6 @@ void GameProcess::updateSimulation(float dt) {
                     break;
                 }
             }
-
             if (!A.alive) break;
         }
     }
