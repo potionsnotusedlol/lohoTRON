@@ -49,6 +49,7 @@ set(SOURCES
     ./src/KeyCaptureDialog.cpp
     ./src/KeyCaptureProcess.cpp
     ./src/GamePauseWindow.cpp
+    ./src/GameOverWindow.cpp
     resources.qrc
 )
 set(HEADERS
@@ -62,6 +63,7 @@ set(HEADERS
     ./src/KeyCaptureDialog.h
     ./src/KeyCaptureProcess.h
     ./src/GamePauseWindow.h
+    ./src/GameOverWindow.h
 )
 # --- Executable target ---
 qt_add_executable(lohoTRON

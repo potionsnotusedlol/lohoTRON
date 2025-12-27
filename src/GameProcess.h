@@ -23,6 +23,10 @@
 #include <QMatrix4x4>
 #include "GamePauseWindow.h"
 #include "SettingsWindow.h"
+#include "GameOverWindow.h"
+
+
+
 
 class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
@@ -46,9 +50,11 @@ protected:
     GamePauseWindow* pauseWindow;
 signals:
     void exitToMainMenu();
+    void matchOver(bool playerWin, int killedBots, int roundsWon);
 private slots:
     void onTick();
 private:
+GameOverWindow* gameOverWindow = nullptr;
     struct TrailPoint {
         QVector3D pos;
         float time;
@@ -81,6 +87,7 @@ private:
     static float lerpf(float a, float b, float t);
     static float wrapPi(float a);
     void resetGame();
+    bool m_gameOverShown = false;
 
     std::unique_ptr<Ogre::Root> m_root;
     Ogre::SceneManager* m_scene_manager;
