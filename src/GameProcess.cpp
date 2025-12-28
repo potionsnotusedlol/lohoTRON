@@ -776,7 +776,6 @@ void GameProcess::resetGame(bool newMatch) {
     TrailPoint player_tp;
     player_tp.pos = player_bike.pos;
     player_tp.time = m_time;
-
     m_bikeTrails[0].push_back(player_tp);
 
     for (int i = 1; i < total; ++i) {
