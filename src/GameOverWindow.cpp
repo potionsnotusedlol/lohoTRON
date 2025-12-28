@@ -46,12 +46,31 @@ void GameOverWindow::applyStyles() {
     title_label->setStyleSheet("font-size: 72pt; font-family: \"Bolgarus Beta\";");
     stats_label->setStyleSheet("font-size: 32pt; font-family: \"Wattauchimma\";");
 
-    restart_button->setStyleSheet(
-        "font-size: 36pt; background-color: rgb(127,176,105); border-radius: 10px;"
-    );
-    exit_button->setStyleSheet(
-        "font-size: 36pt; background-color: rgb(61,19,8); border-radius: 10px;"
-    );
+    restart_button->setStyleSheet(R"(
+    QPushButton {
+        font-size: 36pt;
+        background-color: rgb(127,176,105);
+        border-radius: 10px;
+    }
+        QPushButton:hover {
+        background-color: #3daee9;
+        border-color: #6fcfff;
+        color: black;
+    }
+    )");
+
+    exit_button->setStyleSheet(R"(
+    QPushButton {
+        font-size: 36pt;
+        background-color: rgb(61,19,8); 
+        border-radius: 10px;
+    }
+    QPushButton:hover {
+        background-color: #e05d5d;
+        border-color: #ff8a8a;
+        color: black;
+    }
+    )");
 
     auto glow = new QGraphicsDropShadowEffect(title_label);
     glow->setBlurRadius(30);
