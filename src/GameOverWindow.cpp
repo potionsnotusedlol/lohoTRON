@@ -72,7 +72,7 @@ void GameOverWindow::setupConnections() {
     });
 }
 
-void GameOverWindow::setResult(bool win, int killedBots, int wonRounds) {
+void GameOverWindow::setMatchResult(bool win, int killedBots, int wonRounds) {
     title_label->setText(win ? "YOU WIN" : "YOU LOSE");
 
     stats_label->setText(

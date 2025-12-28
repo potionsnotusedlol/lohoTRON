@@ -197,7 +197,6 @@ void GamePauseWindow::onRestartClicked() {
     if (!closing) {
         closing = true;
         
-        // Анимация исчезания
         auto *fade_out = new QPropertyAnimation(this, "windowOpacity");
         fade_out->setDuration(pauseSettings().animation_duration);
         fade_out->setStartValue(windowOpacity());

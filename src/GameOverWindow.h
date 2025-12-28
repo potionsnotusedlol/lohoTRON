@@ -13,7 +13,7 @@ class GameOverWindow : public QDialog {
 public:
     explicit GameOverWindow(QWidget* parent = nullptr);
 
-    void setResult(bool win, int killedBots, int wonRounds);
+    void setMatchResult(bool win, int killedBots, int wonRounds);
 
 signals:
     void restartGame();

@@ -36,6 +36,8 @@ public:
     void setBotCount(int n);        
     void setRoundsCount(int n);  
     unsigned short getColor() const;
+public slots:
+    void resetGameSlot();          
 protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
@@ -53,6 +55,7 @@ signals:
     void matchOver(bool playerWin, int killedBots, int roundsWon);
 private slots:
     void onTick();
+    void exitToMenuInternal();
 private:
 GameOverWindow* gameOverWindow = nullptr;
     struct TrailPoint {
@@ -72,7 +75,7 @@ GameOverWindow* gameOverWindow = nullptr;
         float aiTurnTimer;
         float aiTurnDir;
     };
-
+    void resetGame(bool newMatch);
     void updateSimulation(float dt);
     void updateCamera(float dt);
     void updateTrail(float dt);
@@ -86,7 +89,6 @@ GameOverWindow* gameOverWindow = nullptr;
     static float clampf(float v, float lo, float hi);
     static float lerpf(float a, float b, float t);
     static float wrapPi(float a);
-    void resetGame();
     bool m_gameOverShown = false;
 
     std::unique_ptr<Ogre::Root> m_root;
