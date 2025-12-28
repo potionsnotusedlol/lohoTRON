@@ -401,12 +401,15 @@ void GameProcess::updateSimulation(float dt) {
 
     bool playerAlive = m_bikes[0].alive;
     if (playerAlive) ++m_roundsWon;
-    else ++m_roundsLost;
+    else {
+        ++m_roundsLost;
+        ++m_botsCrashedIntoPlayer;
+    }
 
     if (m_currentRound >= m_roundsCount) {
         m_matchOver = true;
         m_paused = true;
-        gameOverWindow->setMatchResult(m_roundsWon > m_roundsLost, m_totalBots - m_aliveBots, m_roundsWon);
+        gameOverWindow->setMatchResult(m_roundsWon > m_roundsLost, m_botsCrashedIntoPlayer, m_roundsWon);
         gameOverWindow->show();
     } else {
         ++m_currentRound; 
@@ -669,6 +672,7 @@ void GameProcess::resetGame(bool newMatch) {
         m_currentRound = 1;
         m_roundsWon = 0;
         m_roundsLost = 0;
+        m_botsCrashedIntoPlayer = 0;
     }
 
     if (m_botCount < 1) m_botCount = 1;
