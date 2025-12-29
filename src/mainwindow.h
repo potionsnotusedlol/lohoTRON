@@ -17,7 +17,7 @@ private:
     QStackedWidget* stacked;
     MainMenuWidget* menu;
     GameProcess* game_proc_window;
-    GameOverWindow* gameOverWindow = nullptr;
+    // GameOverWindow* gameOverWindow = nullptr;
 };
 
 #endif // MAINWINDOW_H
