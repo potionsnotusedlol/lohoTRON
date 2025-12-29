@@ -24,9 +24,8 @@
 #include "GamePauseWindow.h"
 #include "SettingsWindow.h"
 #include "GameOverWindow.h"
-
-
-
+#include <QMediaPlayer>
+#include <QAudioOutput>
 
 class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
@@ -36,6 +35,7 @@ public:
     void setBotCount(int n);        
     void setRoundsCount(int n);  
     unsigned short getColor() const;
+    QMediaPlayer* music() const;
 public slots:
     void resetGameSlot();          
 protected:
@@ -57,7 +57,7 @@ private slots:
     void onTick();
     void exitToMenuInternal();
 private:
-GameOverWindow* gameOverWindow = nullptr;
+    GameOverWindow* gameOverWindow = nullptr;
     struct TrailPoint {
         QVector3D pos;
         float time;
@@ -90,7 +90,6 @@ GameOverWindow* gameOverWindow = nullptr;
     static float lerpf(float a, float b, float t);
     static float wrapPi(float a);
     bool m_gameOverShown = false;
-
     std::unique_ptr<Ogre::Root> m_root;
     Ogre::SceneManager* m_scene_manager;
     Ogre::RenderWindow* m_render_window;
@@ -148,6 +147,8 @@ GameOverWindow* gameOverWindow = nullptr;
     qint64 m_lastTimeMs;
     float m_time;
     QTimer* m_tickTimer;
+    QMediaPlayer* music_player;
+    QAudioOutput* music_output;
 };
 
 #endif // GAMEPROCESS_H

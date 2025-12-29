@@ -2,14 +2,16 @@
 
 GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     gameOverWindow = new GameOverWindow(this);
-
-    connect(this, &GameProcess::matchOver, this, [this](bool win, int killedBots, int wonRounds){
-    gameOverWindow->setMatchResult(win, killedBots, wonRounds);
-    gameOverWindow->show();
-    });
+    connect(this, &GameProcess::matchOver, this,
+        [this](bool win, int killedBots, int wonRounds) {
+            music_player->stop();
+            gameOverWindow->sfx()->play();
+            gameOverWindow->setMatchResult(win, killedBots, wonRounds);
+            gameOverWindow->show();
+        }
+    );
     connect(gameOverWindow, &GameOverWindow::restartGame, this, &GameProcess::resetGameSlot);
-    connect(gameOverWindow, &GameOverWindow::exitToMenu, this, &GameProcess::exitToMenuInternal);    
-
+    connect(gameOverWindow, &GameOverWindow::exitToMenu, this, &GameProcess::exitToMenuInternal);
     setFocusPolicy(Qt::StrongFocus);
     m_root.reset();
     m_scene_manager = nullptr;
@@ -35,7 +37,7 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_keyBackward = false;
     m_keyLeft = false;
     m_keyRight = false;
-    m_maxForwardSpeed = 30.0f;
+    m_maxForwardSpeed = 40.0f;
     m_maxBackwardSpeed = 15.0f;
     m_acceleration = 40.0f;
     m_brakeDecel = 60.0f;
@@ -43,7 +45,7 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_turnSpeed = 2.8f;
     m_maxLeanAngle = Ogre::Degree(38.0f).valueRadians();
     m_leanSpeed = 7.0f;
-    m_trailTTL = 12.0f;
+    m_trailTTL = 1.0f;
     m_trailMinDist = 0.35f;
     m_trailColumnSize = 0.8f;
     m_trailColumnHeight= 3.0f;
@@ -72,7 +74,6 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_bikes.clear();
     m_bikeTrails.clear();
     pauseWindow = new GamePauseWindow(this);
-
     connect(pauseWindow, &GamePauseWindow::resumeGame, this, [this]() { m_paused = false; });
     connect(pauseWindow, &GamePauseWindow::cancelPause, this, [this]() { m_paused = false; });
     connect(pauseWindow, &GamePauseWindow::restartGame, this,
@@ -106,7 +107,6 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
         QVector3D(0.22f, 0.302f, 0.282f), // dark slate grey
         QVector3D(0.8f, 0.247f, 0.047f) // red ochre
     };
-
     float spawnRadius = m_mapHalfSize * 0.75f;
     Bike& player_bike = m_bikes[0];
     float player_baseAngle = 0, jitter = (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.4f;
@@ -165,7 +165,44 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_tickTimer = new QTimer(this);
     connect(m_tickTimer, SIGNAL(timeout()), this, SLOT(onTick()));
     m_tickTimer->start(16);
+    music_player = new QMediaPlayer;
+    music_output = new QAudioOutput;
+    music_player->setAudioOutput(music_output);
+    music_output->setVolume(1);
 
+    QStringList music_playlist = {
+        "qrc:/music/Дальнобойщики [PHONK __ ФОНК].mp3",
+        "qrc:/music/Tyler The Creator - DOGTOOTH (NEVER DULL REMIX).mp3",
+        "qrc:/music/Kanye_West_Praise_God.mp3",
+        "qrc:/music/R3hab & Fafaq & DNF - Sorry I Missed Your Call.mp3",
+        "qrc:/music/Seeing Is Believing.mp3",
+        "qrc:/music/Pi'erre Bourne - Be Mine.mp3",
+        "qrc:/music/1531411811_juice-wrld-lil-uzi-vert-wasted.mp3",
+        "qrc:/music/gone-fludd-park-mechty-navyazchivogo-sostoyaniya.mp3",
+        "qrc:/music/1551015094_a-boogie-wit-da-hoodie-feat_-6ix9i-swervin-2018-muzonov_net.mp3",
+        "qrc:/music/Travis Scott - BUTTERFLY EFFECT.mp3",
+        "qrc:/music/PAY ATTENTION.mp3",
+        "qrc:/music/MEET AT THE SPOT.mp3",
+        "qrc:/music/Moving Too Fast (feat. Young Nudy).mp3",
+        "qrc:/music/Metro Boomin, Future - I Can't Save You (Interlude) [feat. Don Toliver].mp3",
+        "qrc:/music/Metro Boomin, Future, Lil Uzi Vert - All The Way Live (Spider-Man_ Across the Spider-Verse).mp3"
+    };
+
+    srand(time(NULL));
+
+    unsigned short track_num = rand() % 15 + 1;
+
+    music_player->setSource(QUrl(music_playlist[track_num - 1]));
+    music_player->play();
+    connect(this->music_player, &QMediaPlayer::mediaStatusChanged, this,
+        [this, music_playlist, &track_num]() {
+            if (music_player->mediaStatus() == QMediaPlayer::EndOfMedia || music_player->mediaStatus() == QMediaPlayer::NoMedia) {
+                track_num = rand() % 15 + 1;
+                music_player->setSource(QUrl(music_playlist[track_num - 1]));
+                music_player->play();
+            }
+        }
+    );
 }
 
 void GameProcess::setFieldSize(int n) {
@@ -226,7 +263,6 @@ void GameProcess::paintGL() {
     if (dt < 0.0f) dt = 0.0f;
 
     if (!m_paused) {
-        // m_time += dt;
         updateSimulation(dt);
         updateTrail(dt);
     } else updateCamera(dt);
@@ -283,11 +319,12 @@ void GameProcess::keyPressEvent(QKeyEvent* event) {
     }
 
     if (m_roundOver && !m_matchOver) {
-    m_roundOver = false;
-    resetGame(false);
-    QOpenGLWidget::keyPressEvent(event);
-    return;
-}
+        m_roundOver = false;
+        resetGame(false);
+        QOpenGLWidget::keyPressEvent(event);
+
+        return;
+    }
 
     QJsonObject root = loadConfigRoot();
     QJsonObject player = root.value("player").toObject();
@@ -316,8 +353,7 @@ void GameProcess::exitToMenuInternal() {
     m_deadCount = 0;
     m_playerRank = 0;
 
-    if (m_tickTimer)
-        m_tickTimer->stop();
+    if (m_tickTimer) m_tickTimer->stop();
 
     emit exitToMainMenu();
 }
@@ -363,13 +399,12 @@ void GameProcess::mouseMoveEvent(QMouseEvent* event) {
         return;
     }
 
-    QPoint cur  = event->pos();
+    QPoint cur = event->pos();
     QPoint delta = cur - lastPos;
 
     lastPos = cur;
 
-    float dx = static_cast<float>(delta.x()), dy = static_cast<float>(delta.y());
-    float sens = m_mouseSensitivity;
+    float dx = static_cast<float>(delta.x()), dy = static_cast<float>(delta.y()), sens = m_mouseSensitivity;
 
     m_camYaw -= dx * sens;
     m_camPitch -= dy * sens;
@@ -393,38 +428,41 @@ void GameProcess::updateSimulation(float dt) {
     int n = static_cast<int>(m_bikes.size());
 
     if (!m_roundOver) {
-    int aliveCount = 0;
-    for (int i = 0; i < n; ++i) if (m_bikes[i].alive) ++aliveCount;
+        int aliveCount = 0;
+        for (int i = 0; i < n; ++i) if (m_bikes[i].alive) ++aliveCount;
 
-    if (aliveCount <= 1) {
-    m_roundOver = true;
+        if (aliveCount <= 1) {
+            m_roundOver = true;
 
-    bool playerAlive = m_bikes[0].alive;
-    if (playerAlive) ++m_roundsWon;
-    else {
-        ++m_roundsLost;
-        ++m_botsCrashedIntoPlayer;
+            bool playerAlive = m_bikes[0].alive;
+
+            if (playerAlive) ++m_roundsWon;
+            else {
+                ++m_roundsLost;
+                ++m_botsCrashedIntoPlayer;
+            }
+
+            if (m_currentRound >= m_roundsCount) {
+                m_matchOver = true;
+                m_paused = true;
+                gameOverWindow->sfx()->play();
+                music_player->stop();
+                gameOverWindow->setMatchResult(m_roundsWon > m_roundsLost, m_botsCrashedIntoPlayer, m_roundsWon);
+                gameOverWindow->show();
+            } else {
+                ++m_currentRound; 
+                m_roundOver = true;
+                m_paused = true;
+                m_roundText = "ROUND OVER\nPress any key";
+            }
+        }
     }
 
-    if (m_currentRound >= m_roundsCount) {
-        m_matchOver = true;
-        m_paused = true;
-        gameOverWindow->setMatchResult(m_roundsWon > m_roundsLost, m_botsCrashedIntoPlayer, m_roundsWon);
-        gameOverWindow->show();
-    } else {
-        ++m_currentRound; 
-        m_roundOver = true;
-        m_paused = true;
-        m_roundText = "ROUND OVER\nPress any key";
-    }
-}
-}
-
-    if (m_paused || m_matchOver)
-        return;
+    if (m_paused || m_matchOver) return;
 
     for (int i = 0; i < n; ++i) {
         Bike& b = m_bikes[i];
+
         if (!b.alive) continue;
 
         b.prevPos = b.pos;
@@ -433,18 +471,21 @@ void GameProcess::updateSimulation(float dt) {
         bool moveForward = false;
 
         if (b.human) {
-            if (m_keyLeft)  turnInput += 1.0f;
+            if (m_keyLeft) turnInput += 1.0f;
+
             if (m_keyRight) turnInput -= 1.0f;
+
             moveForward = true;
         } else {
             moveForward = true;
+
             const float lookAheadDist = 200.0f, avoidThreshold = 2.0f, attackDist2 = 400.0f, minDotAttack = 0.1f;
             const Bike& player = m_bikes[0];
-
             QVector3D localForward(0,0,-1);
             QMatrix4x4 rot;
             rot.setToIdentity();
             rot.rotate(b.yaw * 180.0f / static_cast<float>(M_PI), 0,1,0);
+
             QVector3D forwardDir = rot.map(localForward).normalized();
             QVector3D rightDir(forwardDir.z(),0,-forwardDir.x());
 
@@ -453,21 +494,25 @@ void GameProcess::updateSimulation(float dt) {
 
             for (int owner = 0; owner < n && !needAvoid; ++owner) {
                 const auto& trail = m_bikeTrails[owner];
+
                 if (trail.empty()) continue;
 
                 for (const auto& tp : trail) {
                     QVector3D p = tp.pos; p.setY(0);
                     QVector3D v = p - b.pos; v.setY(0);
                     float proj = QVector3D::dotProduct(v, forwardDir);
+
                     if (proj < 0 || proj > lookAheadDist) continue;
 
                     QVector3D projPoint = b.pos + forwardDir * proj;
                     projPoint.setY(0);
+
                     QVector3D diff = p - projPoint;
                     diff.setY(0);
 
                     if (diff.lengthSquared() <= avoidThreshold * avoidThreshold) {
                         float side = QVector3D::dotProduct(p - b.pos, rightDir);
+
                         avoidTurn = (side >= 0.0f) ? -1.0f : 1.0f;
                         needAvoid = true;
                         break;
@@ -479,59 +524,73 @@ void GameProcess::updateSimulation(float dt) {
             else {
                 QVector3D toPlayer = player.pos - b.pos;
                 toPlayer.setY(0);
+
                 float dist2 = toPlayer.lengthSquared();
+
                 if (dist2 > 0.0001f) toPlayer.normalize();
+
                 float dotForward = QVector3D::dotProduct(forwardDir, toPlayer);
 
                 if (dist2 <= attackDist2 && dotForward > minDotAttack) {
                     float side = QVector3D::dotProduct(toPlayer, rightDir.normalized());
+
                     turnInput = (side > 0) ? -1.0f : 1.0f;
                     turnInput *= 0.4f + 0.4f * (static_cast<float>(std::rand()) / RAND_MAX);
                 } else {
                     b.aiTurnTimer -= dt;
+
                     if (b.aiTurnTimer <= 0.0f) {
                         b.aiTurnTimer = 0.5f + static_cast<float>(std::rand()) / RAND_MAX * 1.5f;
+
                         float r = static_cast<float>(std::rand()) / RAND_MAX;
+
                         if (r < 0.3f) b.aiTurnDir = -1.0f;
                         else if (r > 0.7f) b.aiTurnDir = 1.0f;
                         else b.aiTurnDir = 0.0f;
                     }
+
                     turnInput = b.aiTurnDir;
                 }
             }
         }
 
         float currentTurnSpeed = (turnInput > 0) ? m_turnSpeed : (turnInput < 0) ? -m_turnSpeed : 0.0f;
+
         b.yaw = wrapPi(b.yaw + currentTurnSpeed * dt);
 
         QMatrix4x4 rot2;
         rot2.setToIdentity();
         rot2.rotate(b.yaw * 180.0f / static_cast<float>(M_PI), 0,1,0);
+
         QVector3D dir = rot2 * QVector3D(0,0,-1);
 
         float maxSpeed = m_maxForwardSpeed;
         float accelFactor = m_acceleration, decelFactor = m_friction;
+
         if (moveForward) b.speed += (maxSpeed - b.speed) * accelFactor * dt;
         else b.speed += (-b.speed) * decelFactor * dt;
-
+    
         b.speed = qBound(0.0f, b.speed, maxSpeed);
 
         QVector3D newPos = b.pos + dir.normalized() * b.speed * dt;
         float border = m_mapHalfSize - m_cellSize * 2.0f;
+
         newPos.setX(qBound(-border, newPos.x(), border));
         newPos.setZ(qBound(-border, newPos.z(), border));
+
         b.pos = b.currPos = newPos;
 
         auto& trail = m_bikeTrails[i];
-        if (trail.empty() || (b.pos - trail.back().pos).length() >= m_trailMinDist) {
-            trail.push_back({b.pos, m_time});
-        }
+
+        if (trail.empty() || (b.pos - trail.back().pos).length() >= m_trailMinDist) trail.push_back({b.pos, m_time});
     }
 
     for (int i = 0; i < n; ++i) {
         if (!m_bikes[i].alive) continue;
+
         for (int j = i+1; j < n; ++j) {
             if (!m_bikes[j].alive) continue;
+
             if ((m_bikes[i].pos - m_bikes[j].pos).lengthSquared() <= bikeRadius*2*bikeRadius*2) {
                 killBike(i);
                 killBike(j);
@@ -541,25 +600,29 @@ void GameProcess::updateSimulation(float dt) {
 
     for (int i = 0; i < n; ++i) {
         if (!m_bikes[i].alive) continue;
+
         Bike& A = m_bikes[i];
         float hitR2 = (bikeRadius + trailRadius) * (bikeRadius + trailRadius);
 
         for (int owner = 0; owner < n; ++owner) {
             const auto& trail = m_bikeTrails[owner];
+
             if (trail.empty()) continue;
+
             for (const auto& tp : trail) {
                 if (owner == i && (m_time - tp.time) < 0.1f) continue;
+
                 if ((A.pos - tp.pos).lengthSquared() <= hitR2) {
                     killBike(i);
                     break;
                 }
             }
+
             if (!A.alive) break;
         }
     }
 
-    if (!m_roundOver)
-        updateCamera(dt);
+    if (!m_roundOver) updateCamera(dt);
 }
 
 
@@ -607,6 +670,7 @@ void GameProcess::setupProjection() {
 
 void GameProcess::setupView() {
     if (m_bikes.empty()) return;
+
     float cp = std::cos(m_camPitch), sp = std::sin(m_camPitch), cy = std::cos(m_camYaw), sy = std::sin(m_camYaw);
     QVector3D forward(sy * cp, sp, -cy * cp);
     QVector3D eye = m_camTarget - forward.normalized() * m_camDistanceCur, up(0.0f, 1.0f, 0.0f);
@@ -656,12 +720,10 @@ void GameProcess::showEvent(QShowEvent* event) {
     resetGameSlot();
 }
 
-void GameProcess::resetGameSlot() {
-    resetGame(true);
-}
-
+void GameProcess::resetGameSlot() { resetGame(true); }
 
 void GameProcess::resetGame(bool newMatch) {
+    music_player->play();
     m_matchOver = false;
     m_paused = false;
     m_roundOver = false;
@@ -687,6 +749,7 @@ void GameProcess::resetGame(bool newMatch) {
     m_aliveBots = m_botCount;
     m_time = 0.0f;
     std::srand(static_cast<unsigned>(std::time(nullptr)));
+
     if (m_bikes.empty()) return;
 
     QVector3D colors[6] = {
@@ -721,14 +784,19 @@ void GameProcess::resetGame(bool newMatch) {
     TrailPoint player_tp;
     player_tp.pos = player_bike.pos;
     player_tp.time = m_time;
+
     m_bikeTrails[0].push_back(player_tp);
 
     for (int i = 1; i < total; ++i) {
         Bike& b = m_bikes[i];
         float baseAngle = (static_cast<float>(i) / total) * 2.0f * static_cast<float>(M_PI);
+
         jitter = (static_cast<float>(std::rand()) / RAND_MAX - 0.5f) * 0.4f;
+
         float angle = baseAngle + jitter, radiusJitter = 0.15f * spawnRadius;
+
         r = spawnRadius - radiusJitter + (static_cast<float>(std::rand()) / RAND_MAX) * radiusJitter;
+
         float x = std::cos(angle) * r, z = std::sin(angle) * r;
 
         b.pos = QVector3D(x, 0.0f, z);
@@ -747,10 +815,11 @@ void GameProcess::resetGame(bool newMatch) {
         TrailPoint tp;
         tp.pos = b.pos;
         tp.time = m_time;
+
         m_bikeTrails[i].push_back(tp);
     }
-    if (m_tickTimer)
-    m_tickTimer->start(16);
+
+    if (m_tickTimer) m_tickTimer->start(16);
 }
 
 
@@ -784,16 +853,24 @@ void GameProcess::drawBike() {
         glVertex3f(x0, y1, z1);
         glVertex3f(x1, y1, z1);
         glColor3f(b.color.x() * 0.7f, b.color.y() * 0.7f, b.color.z() * 0.7f);
-        glVertex3f(x0, y0, z1); glVertex3f(x0, y0, z0);
-        glVertex3f(x0, y1, z0); glVertex3f(x0, y1, z1);
-        glVertex3f(x1, y0, z0); glVertex3f(x1, y0, z1);
-        glVertex3f(x1, y1, z1); glVertex3f(x1, y1, z0);
+        glVertex3f(x0, y0, z1);
+        glVertex3f(x0, y0, z0);
+        glVertex3f(x0, y1, z0);
+        glVertex3f(x0, y1, z1);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x1, y1, z1);
+        glVertex3f(x1, y1, z0);
         glColor3f(b.color.x(), b.color.y(), b.color.z());
-        glVertex3f(x0, y1, z0); glVertex3f(x1, y1, z0);
-        glVertex3f(x1, y1, z1); glVertex3f(x0, y1, z1);
+        glVertex3f(x0, y1, z0);
+        glVertex3f(x1, y1, z0);
+        glVertex3f(x1, y1, z1);
+        glVertex3f(x0, y1, z1);
         glColor3f(0.0f, 0.0f, 0.0f);
-        glVertex3f(x0, y0, z1); glVertex3f(x1, y0, z1);
-        glVertex3f(x1, y0, z0); glVertex3f(x0, y0, z0);
+        glVertex3f(x0, y0, z1);
+        glVertex3f(x1, y0, z1);
+        glVertex3f(x1, y0, z0);
+        glVertex3f(x0, y0, z0);
         glEnd();
         glPopMatrix();
     }
@@ -918,3 +995,5 @@ unsigned short GameProcess::getColor() const {
     else if (chosen_color == "grey") return 4;
     else return 5; // let it be red for debugging purposes
 }
+
+QMediaPlayer* GameProcess::music() const { return music_player; }

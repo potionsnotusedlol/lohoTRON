@@ -5,30 +5,42 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets Gui OpenGLWidgets)
+find_package(Qt6 6.9 REQUIRED COMPONENTS Core Widgets Gui OpenGLWidgets Multimedia)
 message("Qt version: ${Qt6_VERSION}")
 
 if(APPLE)
     set(OGRE_DIR "/opt/local/share/ogre/Cmake")
     set(OGRE_PLUGIN_DIR "/usr/local/lib")
-    set(OGRE_MEDIA_DIR "/opt/local/share/ogre/Media")
+    set(TRON_MEDIA_DIR
+        "${CMAKE_SOURCE_DIR}/models"
+        CACHE PATH "Ogre models directory"
+    )
 elseif(UNIX)
     set(OGRE_DIR "/usr/local/lib/cmake/OGRE")
     set(OGRE_PLUGIN_DIR "/usr/local/lib/OGRE")
-    set(OGRE_MEDIA_DIR "/usr/local/share/OGRE/Media")
+    set(TRON_MEDIA_DIR
+        "${CMAKE_SOURCE_DIR}/models"
+        CACHE PATH "Ogre models directory"
+    )
     # ensuring OGRE can be found as a snap package 
     find_package(OGRE QUIET)
 
     if(NOT OGRE_FOUND)
         set(OGRE_DIR "/snap/ogre/current/lib/OGRE/cmake")
         set(OGRE_PLUGIN_DIR "/snap/ogre/current/lib/OGRE")
-        set(OGRE_MEDIA_DIR "/snap/ogre/current/share/OGRE-14.4/Media")
+        set(TRON_MEDIA_DIR
+            "${CMAKE_SOURCE_DIR}/models"
+            CACHE PATH "Ogre models directory"
+        )
         find_package(OGRE REQUIRED)
     endif()
 elseif(WIN32)
     set(OGRE_DIR "C:/dev/ogre-contents/build/sdk/CMake")
     set(OGRE_PLUGIN_DIR "C:/dev/ogre-contents/build/sdk/lib")
-    set(OGRE_MEDIA_DIR "C:/dev/ogre-contents/build/sdk/Media")
+    set(TRON_MEDIA_DIR
+        "${CMAKE_SOURCE_DIR}/models"
+        CACHE PATH "Ogre models directory"
+    )
     set(SDL2_DIR "C:/dev/vcpkg/installed/x64-windows/share/sdl2")
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/release")
 endif()
@@ -77,6 +89,7 @@ if(APPLE)
         Qt6::Widgets
         Qt6::Gui
         Qt6::OpenGLWidgets
+        Qt6::Multimedia
         OgreBites
         OgreRTShaderSystem
         OgreMain
@@ -120,7 +133,7 @@ target_link_libraries(lohoTRON PRIVATE SDL2::SDL2)
 if (WIN32)
     configure_file(plugins.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins.cfg @ONLY)
     configure_file(resources.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources.cfg @ONLY)
-elif (UNIX AND NOT APPLE)
+elseif (UNIX)
     configure_file(plugins.cfg.in plugins.cfg @ONLY)
     configure_file(resources.cfg.in resources.cfg @ONLY)
 endif()
