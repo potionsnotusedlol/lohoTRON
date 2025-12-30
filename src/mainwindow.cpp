@@ -10,12 +10,6 @@ mainwindow::mainwindow(QWidget* parent) : QMainWindow(parent) {
     setCentralWidget(stacked);
     stacked->setCurrentWidget(menu);
     connect(game_proc_window, &GameProcess::exitToMainMenu, this, &mainwindow::showMenu);
-    // connect(game_proc_window, &GameProcess::matchOver, this,
-    //     [this](bool win, int killedBots, int roundsWon) {
-    //         gameOverWindow->setMatchResult(win, killedBots, roundsWon);
-    //         gameOverWindow->exec();
-    //     }
-    // );
 }
 
 void mainwindow::showMenu() {
