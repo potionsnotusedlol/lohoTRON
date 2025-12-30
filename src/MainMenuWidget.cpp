@@ -34,6 +34,40 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
             quit_dlg.exec();
         }
     );
+    //creating a media player for da music to blast thru da hood
+    music_player = new QMediaPlayer;
+    music_output = new QAudioOutput;
+    music_player->setAudioOutput(music_output);
+    music_output->setVolume(1);
+
+    QStringList music_playlist = {
+        "qrc:/music/Rock N Roll.mp3",
+        "qrc:/music/Gangsta-Rap_-_Nigga-Nigga-Nigga_(muzichka.cc).mp3",
+        "qrc:/music/videoplayback (1).mp3",
+        "qrc:/music/Pi'erre Bourne - Be Mine.mp3",
+        "qrc:/music/Tory Lanez - Sorry 4 What_  LV BELT.mp3",
+        "qrc:/music/Pi'erre Bourne - Gotta Blast.mp3",
+        "qrc:/music/SCOPIN.mp3",
+        "qrc:/music/TAY-K - The Race 🏁 (Prod_ S.Diesel) [@DJPHATTT Exclusive] _VIDEO IN DESCRIPTION_.mp3",
+        "qrc:/music/Gangsta-Rap_-_Nigga-Nigga-Nigga_(muzichka.cc).mp3",
+        "qrc:/music/We're Finally Landing.mp3"
+    };
+
+    srand(time(NULL));
+
+    unsigned short track_num = rand() % 10 + 1;
+
+    music_player->setSource(QUrl(music_playlist[track_num - 1]));
+    music_player->play();
+    connect(this->music_player, &QMediaPlayer::mediaStatusChanged, this,
+        [this, music_playlist, &track_num]() {
+            if (music_player->mediaStatus() == QMediaPlayer::EndOfMedia || music_player->mediaStatus() == QMediaPlayer::NoMedia) {
+                track_num = rand() % 10 + 1;
+                music_player->setSource(QUrl(music_playlist[track_num - 1]));
+                music_player->play();
+            }
+        }
+    );
 
     // creating the blue glowing effect (same for each button, different for logo_label)
     auto glow_logo_label = new QGraphicsDropShadowEffect(ui->logo_label);
@@ -172,3 +206,5 @@ void MainMenuWidget::updateSpacings() {
         btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
 }
+
+QMediaPlayer* MainMenuWidget::music() const { return music_player; }

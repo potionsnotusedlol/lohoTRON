@@ -23,6 +23,9 @@
 #include <QMatrix4x4>
 #include "GamePauseWindow.h"
 #include "SettingsWindow.h"
+#include "GameOverWindow.h"
+#include <QMediaPlayer>
+#include <QAudioOutput>
 
 class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
@@ -32,6 +35,9 @@ public:
     void setBotCount(int n);        
     void setRoundsCount(int n);  
     unsigned short getColor() const;
+    QMediaPlayer* music() const;
+public slots:
+    void resetGameSlot();          
 protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
@@ -46,9 +52,12 @@ protected:
     GamePauseWindow* pauseWindow;
 signals:
     void exitToMainMenu();
+    void matchOver(bool playerWin, int killedBots, int roundsWon);
 private slots:
     void onTick();
+    void exitToMenuInternal();
 private:
+    GameOverWindow* gameOverWindow = nullptr;
     struct TrailPoint {
         QVector3D pos;
         float time;
@@ -66,7 +75,7 @@ private:
         float aiTurnTimer;
         float aiTurnDir;
     };
-
+    void resetGame(bool newMatch);
     void updateSimulation(float dt);
     void updateCamera(float dt);
     void updateTrail(float dt);
@@ -80,8 +89,7 @@ private:
     static float clampf(float v, float lo, float hi);
     static float lerpf(float a, float b, float t);
     static float wrapPi(float a);
-    void resetGame();
-
+    bool m_gameOverShown = false;
     std::unique_ptr<Ogre::Root> m_root;
     Ogre::SceneManager* m_scene_manager;
     Ogre::RenderWindow* m_render_window;
@@ -111,6 +119,9 @@ private:
     int m_aliveBots = 0;   
     int m_roundsWon = 0;
     int m_roundsLost = 0;
+    int m_wonRounds = 0;
+    int m_lostRounds = 0;
+    int m_botsCrashedIntoPlayer = 0;
     bool m_keyForward;
     bool m_matchOver = false;
     bool m_keyBackward;
@@ -136,6 +147,8 @@ private:
     qint64 m_lastTimeMs;
     float m_time;
     QTimer* m_tickTimer;
+    QMediaPlayer* music_player;
+    QAudioOutput* music_output;
 };
 
 #endif // GAMEPROCESS_H

@@ -1,10 +1,40 @@
 <RCC>
     <qresource prefix="/">
         <file>images/bg_menu.png</file>
+        <file>images/creators.jpg</file>
+        <file>images/emelya.jpg</file>
+        <file>images/komissarov.jpg</file>
+        <file>images/plechov.jpg</file>
         <file>fonts/Bolgarus Beta.ttf</file>
         <file>fonts/FREEFATFONT-Regular.otf</file>
         <file>fonts/Wattauchimma.ttf</file>
         <file>fonts/TraktorMoodFont-Regular.otf</file>
         <file>creators_info.md</file>
+        <file>music/Rock N Roll.mp3</file>
+        <file>music/Gangsta-Rap_-_Nigga-Nigga-Nigga_(muzichka.cc).mp3</file>
+        <file>music/videoplayback (1).mp3</file>
+        <file>music/Pi'erre Bourne - Be Mine.mp3</file>
+        <file>music/Tory Lanez - Sorry 4 What_  LV BELT.mp3</file>
+        <file>music/Pi'erre Bourne - Gotta Blast.mp3</file>
+        <file>music/SCOPIN.mp3</file>
+        <file>music/TAY-K - The Race 🏁 (Prod_ S.Diesel) [@DJPHATTT Exclusive] _VIDEO IN DESCRIPTION_.mp3</file>
+        <file>music/We're Finally Landing.mp3</file>
+        <file>music/Дальнобойщики [PHONK __ ФОНК].mp3</file>
+        <file>music/Tyler The Creator - DOGTOOTH (NEVER DULL REMIX).mp3</file>
+        <file>music/Kanye_West_Praise_God.mp3</file>
+        <file>music/R3hab Fafaq DNF - Sorry I Missed Your Call.mp3</file>
+        <file>music/Seeing Is Believing.mp3</file>
+        <file>music/1531411811_juice-wrld-lil-uzi-vert-wasted.mp3</file>
+        <file>music/gone-fludd-park-mechty-navyazchivogo-sostoyaniya.mp3</file>
+        <file>music/1551015094_a-boogie-wit-da-hoodie-feat_-6ix9i-swervin-2018-muzonov_net.mp3</file>
+        <file>music/Travis Scott - BUTTERFLY EFFECT.mp3</file>
+        <file>music/PAY ATTENTION.mp3</file>
+        <file>music/MEET AT THE SPOT.mp3</file>
+        <file>music/Moving Too Fast (feat. Young Nudy).mp3</file>
+        <file>music/Metro Boomin, Future - I Can't Save You (Interlude) [feat. Don Toliver].mp3</file>
+        <file>music/Metro Boomin, Future, Lil Uzi Vert - All The Way Live (Spider-Man_ Across the Spider-Verse).mp3</file>
+        <file>sfx/9dd6263a5844370afb08c103ddee00ca.mp3</file>
+        <file>sfx/ethics - miss the mom [ мой ].mp3</file>
+        <file>sfx/loud death.mp3</file>
     </qresource>
 </RCC>

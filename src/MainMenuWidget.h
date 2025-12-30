@@ -2,6 +2,10 @@
 #define MAINMENUWIDGET_H
 
 #include <QWidget>
+#include <QMediaPlayer>
+#include <QAudioOutput>
+#include <cstdlib>
+#include <ctime>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainMenuWidget; }
@@ -12,10 +16,13 @@ class MainMenuWidget : public QWidget {
 public:
     explicit MainMenuWidget(QWidget* parent = nullptr);
     ~MainMenuWidget();
+    QMediaPlayer* music() const;
 protected:
     void resizeEvent(QResizeEvent* event);
 private:
     Ui::MainMenuWidget *ui;
+    QMediaPlayer *music_player;
+    QAudioOutput *music_output;
 
     void updateSpacings();
 };
