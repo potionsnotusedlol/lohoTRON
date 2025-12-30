@@ -56,8 +56,8 @@ void GameOverWindow::applyStyles() {
         "border-radius: 10px;"
         "color: cyan;"
     );
-    title_label->setStyleSheet("font-size: 72pt; font-family: \"Bolgarus Beta\";");
-    stats_label->setStyleSheet("font-size: 32pt; font-family: \"Wattauchimma\";");
+    title_label->setStyleSheet("font-size: 72pt; font-family: \"Bolgarus Beta\"; border: none;");
+    stats_label->setStyleSheet("font-size: 32pt; font-family: \"Wattauchimma\"; border: none;");
     restart_button->setStyleSheet(
         R"(
             QPushButton {
