@@ -20,6 +20,7 @@
 #include <QJsonParseError>
 #include <QIntValidator>
 #include <QCoreApplication>
+#include "MultiPlayerGameProcess.h"
 
 class GameStartWindow : public QDialog {
     Q_OBJECT

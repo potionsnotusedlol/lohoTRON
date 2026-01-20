@@ -57,11 +57,12 @@ set(SOURCES
     ./src/GameStartWindow.cpp
     ./src/QuitGameWindow.cpp
     ./src/CreatorsWindow.cpp
-    ./src/GameProcess.cpp
+    ./src/SinglePlayerGameProcess.cpp
     ./src/KeyCaptureDialog.cpp
     ./src/KeyCaptureProcess.cpp
     ./src/GamePauseWindow.cpp
     ./src/GameOverWindow.cpp
+    ./src/MultiPlayerGameProcess.cpp
     resources.qrc
 )
 set(HEADERS
@@ -71,11 +72,12 @@ set(HEADERS
     ./src/GameStartWindow.h
     ./src/QuitGameWindow.h
     ./src/CreatorsWindow.h
-    ./src/GameProcess.h
+    ./src/SinglePlayerGameProcess.h
     ./src/KeyCaptureDialog.h
     ./src/KeyCaptureProcess.h
     ./src/GamePauseWindow.h
     ./src/GameOverWindow.h
+    ./src/MultiPlayerGameProcess.h
 )
 # --- Executable target ---
 qt_add_executable(lohoTRON
