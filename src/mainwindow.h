@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QStackedWidget>
 #include "MainMenuWidget.h"
-#include "GameProcess.h"
+#include "SinglePlayerGameProcess.h"
 
 class mainwindow : public QMainWindow {
     Q_OBJECT
@@ -16,7 +16,7 @@ public slots:
 private:
     QStackedWidget* stacked;
     MainMenuWidget* menu;
-    GameProcess* game_proc_window;
+    SinglePlayerGameProcess* game_proc_window;
 };
 
 #endif // MAINWINDOW_H

@@ -118,7 +118,9 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     auto* more_bots_button = new QPushButton("HARDER");
     auto* bots_count = new QLineEdit(this);
     auto* less_bots_button = new QPushButton("SIMPLER");
+    auto* game_modes_layout = new QHBoxLayout(this);
     auto* start_game_button = new QPushButton("READY");
+    auto* start_mp_button = new QPushButton("MULTIPLAYER");
     auto* cancel_game_button = new QPushButton("← MENU");
 
     layout->addWidget(game_set_label, 0, Qt::AlignCenter);
@@ -138,7 +140,9 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
     bots_change_layout->addWidget(more_bots_button, 0, Qt::AlignCenter);
     bots_change_layout->addWidget(bots_count, 0, Qt::AlignCenter);
     bots_change_layout->addWidget(less_bots_button, 0, Qt::AlignCenter);
-    layout->addWidget(start_game_button, 0, Qt::AlignCenter);
+    layout->addLayout(game_modes_layout);
+    game_modes_layout->addWidget(start_game_button, 0, Qt::AlignCenter);
+    game_modes_layout->addWidget(start_mp_button), Qt::AlignCenter;
     layout->addWidget(cancel_game_button, 0, Qt::AlignLeft);
     game_set_label->setStyleSheet(
         "font-size: 84pt;"
@@ -225,6 +229,20 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         "background: rgb(242, 208, 164);"
     );
     start_game_button->setStyleSheet(
+        "QPushButton {"
+            "font-size: 72pt;"
+            "font-family: \"FREE FAT FONT\";"
+            "color: black;"
+            "border: none;"
+            "padding-bottom: 10px;"
+            "padding-left: 10px;"
+            "padding-right: 10px;"
+            "margin-top: 2xPx0px;"
+            "background-color: cyan;"
+        "}"
+        "QPushButton:hover { background-color: rgb(73, 159, 104); }"
+    );
+    start_mp_button->setStyleSheet(
         "QPushButton {"
             "font-size: 72pt;"
             "font-family: \"FREE FAT FONT\";"
@@ -342,12 +360,18 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
             }
         }
     );
+    connect(start_mp_button, &QPushButton::clicked, this,
+        [this]() {
+            MultiPlayerGameProcess mp(this);
+            mp.exec();
+        }
+    );
     connect(more_rounds_button, &QPushButton::clicked, this,
         [rounds_count]() {
             bool ok = false;
             int rounds = rounds_count->text().toInt(&ok);
-            if (!ok)
-                rounds = g_rounds_min;
+            if (!ok) rounds = g_rounds_min;
+
             if (rounds < g_rounds_max) {
                 ++rounds;
                 g_current_rounds_count = rounds;
@@ -359,8 +383,9 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         [rounds_count]() {
             bool ok = false;
             int rounds = rounds_count->text().toInt(&ok);
-            if (!ok)
-                rounds = g_rounds_min;
+
+            if (!ok) rounds = g_rounds_min;
+
             if (rounds > g_rounds_min) {
                 --rounds;
                 g_current_rounds_count = rounds;
@@ -373,8 +398,9 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         [bots_count, bots_min, bots_max]() {
             bool ok = false;
             int bots = bots_count->text().toInt(&ok);
-            if (!ok)
-                bots = bots_min;
+
+            if (!ok) bots = bots_min;
+
             if (bots < bots_max) {
                 ++bots;
                 g_current_bots_count = bots;
@@ -387,8 +413,9 @@ GameStartWindow::GameStartWindow(QWidget* parent) : QDialog(parent) {
         [bots_count, bots_min, bots_max]() {
             bool ok = false;
             int bots = bots_count->text().toInt(&ok);
-            if (!ok)
-                bots = bots_min;
+
+            if (!ok) bots = bots_min;
+            
             if (bots > bots_min) {
                 --bots;
                 g_current_bots_count = bots;

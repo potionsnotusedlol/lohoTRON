@@ -3,13 +3,13 @@
 mainwindow::mainwindow(QWidget* parent) : QMainWindow(parent) {
     stacked = new QStackedWidget(this);
     menu = new MainMenuWidget;
-    game_proc_window = new GameProcess;
+    game_proc_window = new SinglePlayerGameProcess;
     game_proc_window->music()->stop();
     stacked->addWidget(menu);
     stacked->addWidget(game_proc_window);
     setCentralWidget(stacked);
     stacked->setCurrentWidget(menu);
-    connect(game_proc_window, &GameProcess::exitToMainMenu, this, &mainwindow::showMenu);
+    connect(game_proc_window, &SinglePlayerGameProcess::exitToMainMenu, this, &mainwindow::showMenu);
 }
 
 void mainwindow::showMenu() {

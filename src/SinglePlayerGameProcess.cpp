@@ -1,8 +1,8 @@
-#include "GameProcess.h"
+#include "SinglePlayerGameProcess.h"
 
-GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
+SinglePlayerGameProcess::SinglePlayerGameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     gameOverWindow = new GameOverWindow(this);
-    connect(this, &GameProcess::matchOver, this,
+    connect(this, &SinglePlayerGameProcess::matchOver, this,
         [this](bool win, int killedBots, int wonRounds) {
             music_player->stop();
             gameOverWindow->sfx()->play();
@@ -10,8 +10,8 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
             gameOverWindow->show();
         }
     );
-    connect(gameOverWindow, &GameOverWindow::restartGame, this, &GameProcess::resetGameSlot);
-    connect(gameOverWindow, &GameOverWindow::exitToMenu, this, &GameProcess::exitToMenuInternal);
+    connect(gameOverWindow, &GameOverWindow::restartGame, this, &SinglePlayerGameProcess::resetGameSlot);
+    connect(gameOverWindow, &GameOverWindow::exitToMenu, this, &SinglePlayerGameProcess::exitToMenuInternal);
     setFocusPolicy(Qt::StrongFocus);
     m_root.reset();
     m_scene_manager = nullptr;
@@ -48,7 +48,7 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     m_trailTTL = 1.0f;
     m_trailMinDist = 0.35f;
     m_trailColumnSize = 0.8f;
-    m_trailColumnHeight= 3.0f;
+    m_trailColumnHeight = 3.0f;
     m_time = 0.0f;
     m_lastTimeMs = 0;
     m_roundOver = false;
@@ -107,6 +107,7 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
         QVector3D(0.22f, 0.302f, 0.282f), // dark slate grey
         QVector3D(0.8f, 0.247f, 0.047f) // red ochre
     };
+
     float spawnRadius = m_mapHalfSize * 0.75f;
     Bike& player_bike = m_bikes[0];
     float player_baseAngle = 0, jitter = (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.4f;
@@ -114,7 +115,7 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     float r = spawnRadius - player_radiusJitter + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) * player_radiusJitter, x = std::cos(player_angle) * r, z = std::sin(player_angle) * r;
 
     player_bike.pos = QVector3D(0, 0.0f, z);
-    player_bike.yaw = + static_cast<float>(M_PI) - player_angle;
+    player_bike.yaw = static_cast<float>(M_PI) - player_angle;
     player_bike.speed = 0.0f;
     player_bike.lean = 0.0f;
     player_bike.color = colors[getColor()];
@@ -143,7 +144,7 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
         b.speed = 0.0f;
         b.lean = 0.0f;
         b.color = colors[5];
-        b.human = (i == 0);
+        b.human = false;
         b.alive = true;
         b.prevPos = b.pos;
         b.currPos = b.pos;
@@ -205,20 +206,20 @@ GameProcess::GameProcess(QWidget* parent) : QOpenGLWidget(parent) {
     );
 }
 
-void GameProcess::setFieldSize(int n) {
+void SinglePlayerGameProcess::setFieldSize(int n) {
     m_fieldSize = std::max(10, n);
     m_gridSize = m_fieldSize;
     m_mapHalfSize = 0.5f * m_cellSize * static_cast<float>(m_gridSize);
 }
 
-void GameProcess::setBotCount(int n) { m_botCount = std::max(1, n); }
+void SinglePlayerGameProcess::setBotCount(int n) { m_botCount = std::max(1, n); }
 
-void GameProcess::setRoundsCount(int n) {
+void SinglePlayerGameProcess::setRoundsCount(int n) {
     m_roundsCount = std::max(1, n);
     m_currentRound = 1;
 }
 
-void GameProcess::initializeGL() {
+void SinglePlayerGameProcess::initializeGL() {
     initializeOpenGLFunctions();
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -226,7 +227,7 @@ void GameProcess::initializeGL() {
     glClearColor(0.0f, 0.0f, 0.03f, 1.0f);
 }
 
-void GameProcess::killBike(int idx) {
+void SinglePlayerGameProcess::killBike(int idx) {
     if (idx < 0 || idx >= static_cast<int>(m_bikes.size())) return;
 
     Bike& b = m_bikes[idx];
@@ -245,9 +246,9 @@ void GameProcess::killBike(int idx) {
     }
 }
 
-void GameProcess::resizeGL(int w, int h) { glViewport(0, 0, w, h); }
+void SinglePlayerGameProcess::resizeGL(int w, int h) { glViewport(0, 0, w, h); }
 
-void GameProcess::paintGL() {
+void SinglePlayerGameProcess::paintGL() {
     if (!m_timer.isValid()) {
         m_timer.start();
         m_lastTimeMs = m_timer.elapsed();
@@ -283,6 +284,7 @@ void GameProcess::paintGL() {
     QString roundStr = QString("ROUND %1 / %2").arg(m_currentRound).arg(m_roundsCount), botsStr = QString("ENEMIES: %1 / %2").arg(m_aliveBots).arg(m_totalBots);
     QFont f("Wattauchimma");
     f.setPointSize(72);
+    
     p.setFont(f);
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setBrush(QColor(0, 191, 255));
@@ -311,7 +313,7 @@ void GameProcess::paintGL() {
     }
 }
 
-void GameProcess::keyPressEvent(QKeyEvent* event) {
+void SinglePlayerGameProcess::keyPressEvent(QKeyEvent* event) {
     if (event->isAutoRepeat()) {
         QOpenGLWidget::keyPressEvent(event);
 
@@ -346,7 +348,7 @@ void GameProcess::keyPressEvent(QKeyEvent* event) {
     QOpenGLWidget::keyPressEvent(event);
 }
 
-void GameProcess::exitToMenuInternal() {
+void SinglePlayerGameProcess::exitToMenuInternal() {
     m_matchOver = false;
     m_paused = false;
     m_roundOver = false;
@@ -359,7 +361,7 @@ void GameProcess::exitToMenuInternal() {
 }
 
 
-void GameProcess::keyReleaseEvent(QKeyEvent* event) {
+void SinglePlayerGameProcess::keyReleaseEvent(QKeyEvent* event) {
     if (event->isAutoRepeat()) {
         QOpenGLWidget::keyReleaseEvent(event);
 
@@ -379,15 +381,15 @@ void GameProcess::keyReleaseEvent(QKeyEvent* event) {
     QOpenGLWidget::keyReleaseEvent(event);
 }
 
-void GameProcess::mousePressEvent(QMouseEvent* event) {
+void SinglePlayerGameProcess::mousePressEvent(QMouseEvent* event) {
     m_mouseCaptured = true;
     m_lastMousePos = event->pos();
     QOpenGLWidget::mousePressEvent(event);
 }
 
-void GameProcess::mouseReleaseEvent(QMouseEvent* event) { QOpenGLWidget::mouseReleaseEvent(event); }
+void SinglePlayerGameProcess::mouseReleaseEvent(QMouseEvent* event) { QOpenGLWidget::mouseReleaseEvent(event); }
 
-void GameProcess::mouseMoveEvent(QMouseEvent* event) {
+void SinglePlayerGameProcess::mouseMoveEvent(QMouseEvent* event) {
     static bool first = true;
     static QPoint lastPos;
 
@@ -418,17 +420,19 @@ void GameProcess::mouseMoveEvent(QMouseEvent* event) {
     QOpenGLWidget::mouseMoveEvent(event);
 }
 
-void GameProcess::onTick() { update(); }
+void SinglePlayerGameProcess::onTick() { update(); }
 
-void GameProcess::updateSimulation(float dt) {
+void SinglePlayerGameProcess::updateSimulation(float dt) {
     if (dt <= 0.0f) return;
 
     m_time += dt;
+
     float bikeRadius = 0.8f, trailRadius = 0.3f;
     int n = static_cast<int>(m_bikes.size());
 
     if (!m_roundOver) {
         int aliveCount = 0;
+        
         for (int i = 0; i < n; ++i) if (m_bikes[i].alive) ++aliveCount;
 
         if (aliveCount <= 1) {
@@ -481,13 +485,13 @@ void GameProcess::updateSimulation(float dt) {
 
             const float lookAheadDist = 200.0f, avoidThreshold = 2.0f, attackDist2 = 400.0f, minDotAttack = 0.1f;
             const Bike& player = m_bikes[0];
-            QVector3D localForward(0,0,-1);
+            QVector3D localForward(0, 0, -1);
             QMatrix4x4 rot;
             rot.setToIdentity();
-            rot.rotate(b.yaw * 180.0f / static_cast<float>(M_PI), 0,1,0);
+            rot.rotate(b.yaw * 180.0f / static_cast<float>(M_PI), 0, 1, 0);
 
             QVector3D forwardDir = rot.map(localForward).normalized();
-            QVector3D rightDir(forwardDir.z(),0,-forwardDir.x());
+            QVector3D rightDir(forwardDir.z(), 0, -forwardDir.x());
 
             bool needAvoid = false;
             float avoidTurn = 0.0f;
@@ -498,8 +502,12 @@ void GameProcess::updateSimulation(float dt) {
                 if (trail.empty()) continue;
 
                 for (const auto& tp : trail) {
-                    QVector3D p = tp.pos; p.setY(0);
-                    QVector3D v = p - b.pos; v.setY(0);
+                    QVector3D p = tp.pos;
+                    p.setY(0);
+
+                    QVector3D v = p - b.pos;
+                    v.setY(0);
+
                     float proj = QVector3D::dotProduct(v, forwardDir);
 
                     if (proj < 0 || proj > lookAheadDist) continue;
@@ -560,10 +568,9 @@ void GameProcess::updateSimulation(float dt) {
 
         QMatrix4x4 rot2;
         rot2.setToIdentity();
-        rot2.rotate(b.yaw * 180.0f / static_cast<float>(M_PI), 0,1,0);
+        rot2.rotate(b.yaw * 180.0f / static_cast<float>(M_PI), 0, 1, 0);
 
-        QVector3D dir = rot2 * QVector3D(0,0,-1);
-
+        QVector3D dir = rot2 * QVector3D(0, 0, -1);
         float maxSpeed = m_maxForwardSpeed;
         float accelFactor = m_acceleration, decelFactor = m_friction;
 
@@ -588,10 +595,10 @@ void GameProcess::updateSimulation(float dt) {
     for (int i = 0; i < n; ++i) {
         if (!m_bikes[i].alive) continue;
 
-        for (int j = i+1; j < n; ++j) {
+        for (int j = i + 1; j < n; ++j) {
             if (!m_bikes[j].alive) continue;
 
-            if ((m_bikes[i].pos - m_bikes[j].pos).lengthSquared() <= bikeRadius*2*bikeRadius*2) {
+            if ((m_bikes[i].pos - m_bikes[j].pos).lengthSquared() <= bikeRadius * 2 * bikeRadius * 2) {
                 killBike(i);
                 killBike(j);
             }
@@ -627,7 +634,7 @@ void GameProcess::updateSimulation(float dt) {
 
 
 
-void GameProcess::updateCamera(float dt) {
+void SinglePlayerGameProcess::updateCamera(float dt) {
     if (m_bikes.empty()) return;
 
     const Bike& player = m_bikes[0];
@@ -642,7 +649,7 @@ void GameProcess::updateCamera(float dt) {
     m_camPitch = -0.4f;
 }
 
-void GameProcess::updateTrail(float dt) {
+void SinglePlayerGameProcess::updateTrail(float dt) {
     if (m_trailTTL <= 0.0f) return;
 
     for (size_t i = 0; i < m_bikeTrails.size(); ++i) {
@@ -654,7 +661,7 @@ void GameProcess::updateTrail(float dt) {
     Q_UNUSED(dt);
 }
 
-void GameProcess::setupProjection() {
+void SinglePlayerGameProcess::setupProjection() {
     int w = width(), h = height();
 
     if (h == 0) h = 1;
@@ -668,7 +675,7 @@ void GameProcess::setupProjection() {
     glLoadMatrixf(proj.constData());
 }
 
-void GameProcess::setupView() {
+void SinglePlayerGameProcess::setupView() {
     if (m_bikes.empty()) return;
 
     float cp = std::cos(m_camPitch), sp = std::sin(m_camPitch), cy = std::cos(m_camYaw), sy = std::sin(m_camYaw);
@@ -682,22 +689,22 @@ void GameProcess::setupView() {
     glLoadMatrixf(view.constData());
 }
 
-void GameProcess::drawScene3D() {
+void SinglePlayerGameProcess::drawScene3D() {
     drawGroundGrid();
     drawTrail();
     drawBike();
 }
 
-void GameProcess::drawGroundGrid() {
+void SinglePlayerGameProcess::drawGroundGrid() {
     float half = m_mapHalfSize;
 
     glDisable(GL_TEXTURE_2D);
     glBegin(GL_QUADS);
     glColor3f(0.02f, 0.02f, 0.06f);
     glVertex3f(-half, -0.5f, -half);
-    glVertex3f(+half, -0.5f, -half);
-    glVertex3f(+half, -0.5f, +half);
-    glVertex3f(-half, -0.5f, +half);
+    glVertex3f(half, -0.5f, -half);
+    glVertex3f(half, -0.5f, half);
+    glVertex3f(-half, -0.5f, half);
     glEnd();
     glLineWidth(1.0f);
     glBegin(GL_LINES);
@@ -707,22 +714,22 @@ void GameProcess::drawGroundGrid() {
         float p = (static_cast<float>(i) * m_cellSize) - half;
 
         glVertex3f(-half, -0.49f, p);
-        glVertex3f(+half, -0.49f, p);
+        glVertex3f(half, -0.49f, p);
         glVertex3f(p, -0.49f, -half);
-        glVertex3f(p, -0.49f, +half);
+        glVertex3f(p, -0.49f, half);
     }
 
     glEnd();
 }
 
-void GameProcess::showEvent(QShowEvent* event) {
+void SinglePlayerGameProcess::showEvent(QShowEvent* event) {
     QOpenGLWidget::showEvent(event);
     resetGameSlot();
 }
 
-void GameProcess::resetGameSlot() { resetGame(true); }
+void SinglePlayerGameProcess::resetGameSlot() { resetGame(true); }
 
-void GameProcess::resetGame(bool newMatch) {
+void SinglePlayerGameProcess::resetGame(bool newMatch) {
     music_player->play();
     m_matchOver = false;
     m_paused = false;
@@ -760,8 +767,8 @@ void GameProcess::resetGame(bool newMatch) {
         QVector3D(0.22f, 0.302f, 0.282f),
         QVector3D(0.8f, 0.247f, 0.047f)
     };
-    Bike& player_bike = m_bikes[0];
 
+    Bike& player_bike = m_bikes[0];
     float spawnRadius = m_mapHalfSize * 0.75f;
     float player_baseAngle = 0, jitter = (static_cast<float>(std::rand()) / RAND_MAX - 0.5f) * 0.4f;
     float player_angle = player_baseAngle + jitter, player_radiusJitter = 0.15f * spawnRadius;
@@ -823,7 +830,7 @@ void GameProcess::resetGame(bool newMatch) {
 }
 
 
-void GameProcess::drawBike() {
+void SinglePlayerGameProcess::drawBike() {
     float rad2deg = 180.0f / static_cast<float>(M_PI);
 
     glDisable(GL_BLEND);
@@ -839,7 +846,7 @@ void GameProcess::drawBike() {
         glRotatef(b.lean * rad2deg, 0.0f, 0.0f, 1.0f);
 
         float L = 2.4f, W = 1.2f, H = 1.6f;
-        float x0 = -W * 0.5f, x1 = +W * 0.5f, y0 = 0.0f, y1 = H, z0 = -L * 0.5f, z1 = +L * 0.5f;
+        float x0 = -W * 0.5f, x1 = W * 0.5f, y0 = 0.0f, y1 = H, z0 = -L * 0.5f, z1 = L * 0.5f;
  
         glBegin(GL_QUADS);
         glColor3f(1.0f, 1.0f, 1.0f);
@@ -877,7 +884,7 @@ void GameProcess::drawBike() {
 }
 
 
-void GameProcess::drawTrail() {
+void SinglePlayerGameProcess::drawTrail() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE);
     glDisable(GL_CULL_FACE);
@@ -969,11 +976,11 @@ void GameProcess::drawTrail() {
     glEnable(GL_CULL_FACE);
 }
 
-float GameProcess::clampf(float v, float lo, float hi) { return std::max(lo, std::min(hi, v)); }
+float SinglePlayerGameProcess::clampf(float v, float lo, float hi) { return std::max(lo, std::min(hi, v)); }
 
-float GameProcess::lerpf(float a, float b, float t) { return a + (b - a) * t; }
+float SinglePlayerGameProcess::lerpf(float a, float b, float t) { return a + (b - a) * t; }
 
-float GameProcess::wrapPi(float a) {
+float SinglePlayerGameProcess::wrapPi(float a) {
     const float twoPi = 2.0f * static_cast<float>(M_PI);
 
     while (a <= -static_cast<float>(M_PI)) a += twoPi;
@@ -983,7 +990,7 @@ float GameProcess::wrapPi(float a) {
     return a;
 }
 
-unsigned short GameProcess::getColor() const {
+unsigned short SinglePlayerGameProcess::getColor() const {
     QJsonObject root = loadConfigRoot();
     QJsonObject player = root.value("player").toObject();
     QString chosen_color = player.value("color").toString();
@@ -996,4 +1003,4 @@ unsigned short GameProcess::getColor() const {
     else return 5; // let it be red for debugging purposes
 }
 
-QMediaPlayer* GameProcess::music() const { return music_player; }
+QMediaPlayer* SinglePlayerGameProcess::music() const { return music_player; }

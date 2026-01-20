@@ -1,5 +1,5 @@
-#ifndef GAMEPROCESS_H
-#define GAMEPROCESS_H
+#ifndef SINGLEPLAYERGAMEPROCESS_H
+#define SINGLEPLAYERGAMEPROCESS_H
 
 #include <memory>
 #include <vector>
@@ -27,10 +27,10 @@
 #include <QMediaPlayer>
 #include <QAudioOutput>
 
-class GameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
+class SinglePlayerGameProcess : public QOpenGLWidget, protected QOpenGLFunctions {
     Q_OBJECT
 public:
-    explicit GameProcess(QWidget* parent = nullptr);
+    explicit SinglePlayerGameProcess(QWidget* parent = nullptr);
     void setFieldSize(int n);
     void setBotCount(int n);        
     void setRoundsCount(int n);  
@@ -58,10 +58,12 @@ private slots:
     void exitToMenuInternal();
 private:
     GameOverWindow* gameOverWindow = nullptr;
+
     struct TrailPoint {
         QVector3D pos;
         float time;
     };
+
     struct Bike {
         QVector3D pos;
         QVector3D prevPos;
@@ -75,6 +77,7 @@ private:
         float aiTurnTimer;
         float aiTurnDir;
     };
+
     void resetGame(bool newMatch);
     void updateSimulation(float dt);
     void updateCamera(float dt);
@@ -89,6 +92,7 @@ private:
     static float clampf(float v, float lo, float hi);
     static float lerpf(float a, float b, float t);
     static float wrapPi(float a);
+
     bool m_gameOverShown = false;
     std::unique_ptr<Ogre::Root> m_root;
     Ogre::SceneManager* m_scene_manager;
@@ -151,4 +155,4 @@ private:
     QAudioOutput* music_output;
 };
 
-#endif // GAMEPROCESS_H
+#endif // SINGLEPLAYERGAMEPROCESS_H
