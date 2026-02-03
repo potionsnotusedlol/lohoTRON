@@ -41,23 +41,23 @@ MainMenuWidget::MainMenuWidget(QWidget* parent) : QWidget(parent), ui(new Ui::Ma
     music_output->setVolume(1);
 
     QStringList music_playlist = {
-        "qrc:/music/Rock N Roll.mp3",
-        "qrc:/music/Gangsta-Rap_-_Nigga-Nigga-Nigga_(muzichka.cc).mp3",
-        "qrc:/music/videoplayback (1).mp3",
-        "qrc:/music/Pi'erre Bourne - Be Mine.mp3",
-        "qrc:/music/Tory Lanez - Sorry 4 What_  LV BELT.mp3",
-        "qrc:/music/Pi'erre Bourne - Gotta Blast.mp3",
-        "qrc:/music/SCOPIN.mp3",
-        "qrc:/music/TAY-K - The Race 🏁 (Prod_ S.Diesel) [@DJPHATTT Exclusive] _VIDEO IN DESCRIPTION_.mp3",
-        "qrc:/music/Gangsta-Rap_-_Nigga-Nigga-Nigga_(muzichka.cc).mp3",
-        "qrc:/music/We're Finally Landing.mp3"
+        "music/Rock N Roll.mp3",
+        "music/Gangsta-Rap_-_Nigga-Nigga-Nigga_(muzichka.cc).mp3",
+        "music/videoplayback (1).mp3",
+        "music/Pi'erre Bourne - Be Mine.mp3",
+        "music/Tory Lanez - Sorry 4 What_  LV BELT.mp3",
+        "music/Pi'erre Bourne - Gotta Blast.mp3",
+        "music/SCOPIN.mp3",
+        "music/TAY-K - The Race 🏁 (Prod_ S.Diesel) [@DJPHATTT Exclusive] _VIDEO IN DESCRIPTION_.mp3",
+        "music/Gangsta-Rap_-_Nigga-Nigga-Nigga_(muzichka.cc).mp3",
+        "music/We're Finally Landing.mp3"
     };
 
     srand(time(NULL));
 
     unsigned short track_num = rand() % 10 + 1;
 
-    music_player->setSource(QUrl(music_playlist[track_num - 1]));
+    music_player->setSource(QUrl::fromLocalFile(music_playlist[track_num - 1]));
     music_player->play();
     connect(this->music_player, &QMediaPlayer::mediaStatusChanged, this,
         [this, music_playlist, &track_num]() {

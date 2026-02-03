@@ -85,6 +85,10 @@ qt_add_executable(lohoTRON
     ${HEADERS}
 )
 
+if(MSVC)
+    target_compile_options(lohoTRON PRIVATE /Zm100)
+endif()
+
 if(APPLE)
     target_link_libraries(lohoTRON PRIVATE
         Qt6::Core
@@ -99,14 +103,15 @@ if(APPLE)
         "-framework OpenGL"
     )
 elseif(UNIX OR WIN32)
-    target_link_libraries(lohoTRON PRIVATE 
-        Qt6::Core 
-        Qt6::Widgets 
-        Qt6::Gui 
-        Qt6::OpenGLWidgets 
-        OgreBites 
-        OgreRTShaderSystem 
-        OgreOverlay 
+    target_link_libraries(lohoTRON PRIVATE
+        Qt6::Core
+        Qt6::Widgets
+        Qt6::Gui
+        Qt6::OpenGLWidgets
+        Qt6::Multimedia
+        OgreBites
+        OgreRTShaderSystem
+        OgreOverlay
         OgreMain
     )
     find_library(GL_LIBRARY GL)
@@ -135,9 +140,26 @@ target_link_libraries(lohoTRON PRIVATE SDL2::SDL2)
 if (WIN32)
     configure_file(plugins.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/plugins.cfg @ONLY)
     configure_file(resources.cfg.in ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/resources.cfg @ONLY)
+    add_custom_command(
+        TARGET lohoTRON
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/music"
+            "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/music"
+            
+        COMMENT "Copying music directory (${CMAKE_CURRENT_SOURCE_DIR}/music) to build location (${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/music)"
+    )
 elseif (UNIX)
     configure_file(plugins.cfg.in plugins.cfg @ONLY)
     configure_file(resources.cfg.in resources.cfg @ONLY)
+    add_custom_command(
+        TARGET lohoTRON
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/music"
+            "$<TARGET_FILE_DIR:lohoTRON>/music"
+        COMMENT "Copying music directory to build location"
+    )
 endif()
 
 # --- Platform-specific tweaks ---

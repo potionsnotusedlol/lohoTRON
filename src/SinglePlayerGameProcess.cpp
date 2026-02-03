@@ -172,28 +172,28 @@ SinglePlayerGameProcess::SinglePlayerGameProcess(QWidget* parent) : QOpenGLWidge
     music_output->setVolume(1);
 
     QStringList music_playlist = {
-        "qrc:/music/Дальнобойщики [PHONK __ ФОНК].mp3",
-        "qrc:/music/Tyler The Creator - DOGTOOTH (NEVER DULL REMIX).mp3",
-        "qrc:/music/Kanye_West_Praise_God.mp3",
-        "qrc:/music/R3hab & Fafaq & DNF - Sorry I Missed Your Call.mp3",
-        "qrc:/music/Seeing Is Believing.mp3",
-        "qrc:/music/Pi'erre Bourne - Be Mine.mp3",
-        "qrc:/music/1531411811_juice-wrld-lil-uzi-vert-wasted.mp3",
-        "qrc:/music/gone-fludd-park-mechty-navyazchivogo-sostoyaniya.mp3",
-        "qrc:/music/1551015094_a-boogie-wit-da-hoodie-feat_-6ix9i-swervin-2018-muzonov_net.mp3",
-        "qrc:/music/Travis Scott - BUTTERFLY EFFECT.mp3",
-        "qrc:/music/PAY ATTENTION.mp3",
-        "qrc:/music/MEET AT THE SPOT.mp3",
-        "qrc:/music/Moving Too Fast (feat. Young Nudy).mp3",
-        "qrc:/music/Metro Boomin, Future - I Can't Save You (Interlude) [feat. Don Toliver].mp3",
-        "qrc:/music/Metro Boomin, Future, Lil Uzi Vert - All The Way Live (Spider-Man_ Across the Spider-Verse).mp3"
+        "music/Дальнобойщики [PHONK __ ФОНК].mp3",
+        "music/Tyler The Creator - DOGTOOTH (NEVER DULL REMIX).mp3",
+        "music/Kanye_West_Praise_God.mp3",
+        "music/R3hab & Fafaq & DNF - Sorry I Missed Your Call.mp3",
+        "music/Seeing Is Believing.mp3",
+        "music/Pi'erre Bourne - Be Mine.mp3",
+        "music/1531411811_juice-wrld-lil-uzi-vert-wasted.mp3",
+        "music/gone-fludd-park-mechty-navyazchivogo-sostoyaniya.mp3",
+        "music/1551015094_a-boogie-wit-da-hoodie-feat_-6ix9i-swervin-2018-muzonov_net.mp3",
+        "music/Travis Scott - BUTTERFLY EFFECT.mp3",
+        "music/PAY ATTENTION.mp3",
+        "music/MEET AT THE SPOT.mp3",
+        "music/Moving Too Fast (feat. Young Nudy).mp3",
+        "music/Metro Boomin, Future - I Can't Save You (Interlude) [feat. Don Toliver].mp3",
+        "music/Metro Boomin, Future, Lil Uzi Vert - All The Way Live (Spider-Man_ Across the Spider-Verse).mp3"
     };
 
     srand(time(NULL));
 
     unsigned short track_num = rand() % 15 + 1;
 
-    music_player->setSource(QUrl(music_playlist[track_num - 1]));
+    music_player->setSource(QUrl::fromLocalFile(music_playlist[track_num - 1]));
     music_player->play();
     connect(this->music_player, &QMediaPlayer::mediaStatusChanged, this,
         [this, music_playlist, &track_num]() {
